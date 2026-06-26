@@ -9,6 +9,7 @@ import (
 	"github.com/google/wire"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 // ProviderSet is data providers.
@@ -29,6 +30,11 @@ func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if err := db.Use(tracing.NewPlugin()); err != nil {
+		return nil, nil, err
+	}
+
 	helper.Info("connected to PostgreSQL")
 
 	cleanup := func() {
