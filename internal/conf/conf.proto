@@ -8,6 +8,12 @@ import "google/protobuf/duration.proto";
 message Bootstrap {
   Server server = 1;
   Data data = 2;
+  Logger logger = 3;
+}
+
+message Logger {
+  string level = 1;
+  string format = 2;
 }
 
 message Server {
