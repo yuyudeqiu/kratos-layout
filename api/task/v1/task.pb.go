@@ -7,6 +7,7 @@
 package v1
 
 import (
+	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -574,7 +575,7 @@ var File_task_v1_task_proto protoreflect.FileDescriptor
 
 const file_task_v1_task_proto_rawDesc = "" +
 	"\n" +
-	"\x12task/v1/task.proto\x12\vapi.task.v1\x1a\x1cgoogle/api/annotations.proto\"\xa0\x01\n" +
+	"\x12task/v1/task.proto\x12\vapi.task.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17validate/validate.proto\"\xa0\x01\n" +
 	"\bTaskInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
@@ -583,25 +584,25 @@ const file_task_v1_task_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\"C\n" +
-	"\x11CreateTaskRequest\x12\x14\n" +
-	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"<\n" +
+	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\"X\n" +
+	"\x11CreateTaskRequest\x12\x1f\n" +
+	"\x05title\x18\x01 \x01(\tB\t\xfaB\x06r\x04\x10\x01\x18PR\x05title\x12\"\n" +
+	"\acontent\x18\x02 \x01(\tB\b\xfaB\x05r\x03\x18\x80\bR\acontent\"<\n" +
 	"\x0fCreateTaskReply\x12)\n" +
-	"\x04task\x18\x01 \x01(\v2\x15.api.task.v1.TaskInfoR\x04task\"k\n" +
-	"\x11UpdateTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
-	"\acontent\x18\x03 \x01(\tR\acontent\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\"<\n" +
+	"\x04task\x18\x01 \x01(\v2\x15.api.task.v1.TaskInfoR\x04task\"\xa3\x01\n" +
+	"\x11UpdateTaskRequest\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\x12\x1f\n" +
+	"\x05title\x18\x02 \x01(\tB\t\xfaB\x06r\x04\x10\x01\x18PR\x05title\x12\"\n" +
+	"\acontent\x18\x03 \x01(\tB\b\xfaB\x05r\x03\x18\x80\bR\acontent\x120\n" +
+	"\x06status\x18\x04 \x01(\tB\x18\xfaB\x15r\x13R\x04TODOR\x05DOINGR\x04DONER\x06status\"<\n" +
 	"\x0fUpdateTaskReply\x12)\n" +
-	"\x04task\x18\x01 \x01(\v2\x15.api.task.v1.TaskInfoR\x04task\"#\n" +
-	"\x11DeleteTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"+\n" +
+	"\x04task\x18\x01 \x01(\v2\x15.api.task.v1.TaskInfoR\x04task\",\n" +
+	"\x11DeleteTaskRequest\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\"+\n" +
 	"\x0fDeleteTaskReply\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\" \n" +
-	"\x0eGetTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"9\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\")\n" +
+	"\x0eGetTaskRequest\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\"9\n" +
 	"\fGetTaskReply\x12)\n" +
 	"\x04task\x18\x01 \x01(\v2\x15.api.task.v1.TaskInfoR\x04task\"\x12\n" +
 	"\x10ListTasksRequest\"=\n" +

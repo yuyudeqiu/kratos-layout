@@ -3,6 +3,7 @@ module github.com/go-kratos/kratos-layout
 go 1.25.0
 
 require (
+	github.com/envoyproxy/protoc-gen-validate v1.0.4
 	github.com/go-kratos/kratos/v2 v2.9.2
 	github.com/google/wire v0.6.0
 	github.com/redis/go-redis/v9 v9.21.0
