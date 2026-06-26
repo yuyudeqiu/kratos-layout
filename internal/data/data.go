@@ -1,6 +1,8 @@
 package data
 
 import (
+	"time"
+
 	"github.com/go-kratos/kratos-layout/internal/conf"
 
 	"github.com/go-kratos/kratos/v2/log"
@@ -21,7 +23,9 @@ type Data struct {
 func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 	helper := log.NewHelper(logger)
 
-	db, err := gorm.Open(postgres.Open(c.Database.Source), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(c.Database.Source), &gorm.Config{
+		Logger: NewGormLogger(logger, 200*time.Millisecond),
+	})
 	if err != nil {
 		return nil, nil, err
 	}
