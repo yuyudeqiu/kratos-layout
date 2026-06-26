@@ -3,8 +3,7 @@
 
 openapi: 3.0.3
 info:
-    title: Greeter API
-    description: The greeting service definition.
+    title: ""
     version: 0.0.1
 paths:
     /helloworld/{name}:
@@ -26,8 +25,155 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/helloworld.v1.HelloReply'
+    /v1/tasks:
+        get:
+            tags:
+                - Task
+            operationId: Task_ListTasks
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.task.v1.ListTasksReply'
+        post:
+            tags:
+                - Task
+            operationId: Task_CreateTask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.task.v1.CreateTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.task.v1.CreateTaskReply'
+    /v1/tasks/{id}:
+        get:
+            tags:
+                - Task
+            operationId: Task_GetTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.task.v1.GetTaskReply'
+        put:
+            tags:
+                - Task
+            operationId: Task_UpdateTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.task.v1.UpdateTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.task.v1.UpdateTaskReply'
+        delete:
+            tags:
+                - Task
+            operationId: Task_DeleteTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.task.v1.DeleteTaskReply'
 components:
     schemas:
+        api.task.v1.CreateTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/api.task.v1.TaskInfo'
+        api.task.v1.CreateTaskRequest:
+            type: object
+            properties:
+                title:
+                    type: string
+                content:
+                    type: string
+        api.task.v1.DeleteTaskReply:
+            type: object
+            properties:
+                success:
+                    type: boolean
+        api.task.v1.GetTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/api.task.v1.TaskInfo'
+        api.task.v1.ListTasksReply:
+            type: object
+            properties:
+                tasks:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.task.v1.TaskInfo'
+        api.task.v1.TaskInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                status:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        api.task.v1.UpdateTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/api.task.v1.TaskInfo'
+        api.task.v1.UpdateTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                status:
+                    type: string
         helloworld.v1.HelloReply:
             type: object
             properties:
@@ -36,3 +182,5 @@ components:
             description: The response message containing the greetings
 tags:
     - name: Greeter
+      description: The greeting service definition.
+    - name: Task

@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package api.task.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "github.com/go-kratos/kratos-layout/api/task/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.task.v1";
+
+service Task {
+	rpc CreateTask (CreateTaskRequest) returns (CreateTaskReply) {
+		option (google.api.http) = {
+			post: "/v1/tasks"
+			body: "*"
+		};
+	}
+	rpc UpdateTask (UpdateTaskRequest) returns (UpdateTaskReply) {
+		option (google.api.http) = {
+			put: "/v1/tasks/{id}"
+			body: "*"
+		};
+	}
+	rpc DeleteTask (DeleteTaskRequest) returns (DeleteTaskReply) {
+		option (google.api.http) = {
+			delete: "/v1/tasks/{id}"
+		};
+	}
+	rpc GetTask (GetTaskRequest) returns (GetTaskReply) {
+		option (google.api.http) = {
+			get: "/v1/tasks/{id}"
+		};
+	}
+	rpc ListTasks (ListTasksRequest) returns (ListTasksReply) {
+		option (google.api.http) = {
+			get: "/v1/tasks"
+		};
+	}
+}
+
+message TaskInfo {
+	int64 id = 1;
+	string title = 2;
+	string content = 3;
+	string status = 4;
+	int64 created_at = 5;
+	int64 updated_at = 6;
+}
+
+message CreateTaskRequest {
+	string title = 1;
+	string content = 2;
+}
+
+message CreateTaskReply {
+	TaskInfo task = 1;
+}
+
+message UpdateTaskRequest {
+	int64 id = 1;
+	string title = 2;
+	string content = 3;
+	string status = 4;
+}
+
+message UpdateTaskReply {
+	TaskInfo task = 1;
+}
+
+message DeleteTaskRequest {
+	int64 id = 1;
+}
+
+message DeleteTaskReply {
+	bool success = 1;
+}
+
+message GetTaskRequest {
+	int64 id = 1;
+}
+
+message GetTaskReply {
+	TaskInfo task = 1;
+}
+
+message ListTasksRequest {}
+
+message ListTasksReply {
+	repeated TaskInfo tasks = 1;
+}

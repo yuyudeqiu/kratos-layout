@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package api.task.v1;
+
+option go_package = "github.com/go-kratos/kratos-layout/api/task/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.task.v1";
+
+enum ErrorReason {
+  TASK_UNSPECIFIED = 0;
+  TASK_NOT_FOUND = 1;
+}
