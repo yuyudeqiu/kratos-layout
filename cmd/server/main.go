@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -15,6 +16,13 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/http"
 
 	_ "go.uber.org/automaxprocs"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 // go build -ldflags "-X main.Version=x.y.z"
@@ -28,6 +36,27 @@ var (
 
 	id, _ = os.Hostname()
 )
+
+// initTracer sets up a global OpenTelemetry tracer provider.
+func initTracer(endpoint string, serviceName string) (*tracesdk.TracerProvider, error) {
+	exporter, err := otlptracehttp.New(context.Background(),
+		otlptracehttp.WithEndpoint(endpoint),
+		otlptracehttp.WithInsecure(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(1.0))),
+		tracesdk.WithBatcher(exporter),
+		tracesdk.WithResource(resource.NewSchemaless(
+			semconv.ServiceNameKey.String(serviceName),
+			attribute.String("exporter", "otlp"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	return tp, nil
+}
 
 func init() {
 	flag.StringVar(&flagconf, "conf", "../../configs", "config path, eg: -conf config.yaml")
@@ -58,6 +87,26 @@ func main() {
 		"trace.id", tracing.TraceID(),
 		"span.id", tracing.SpanID(),
 	)
+
+	// Initialize OpenTelemetry global tracer provider
+	traceEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if traceEndpoint == "" {
+		traceEndpoint = "localhost:4318"
+	}
+	serviceName := Name
+	if serviceName == "" {
+		serviceName = "kratos-trace"
+	}
+	tp, err := initTracer(traceEndpoint, serviceName)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			log.NewHelper(logger).Errorf("failed to shutdown tracer provider: %v", err)
+		}
+	}()
+
 	c := config.New(
 		config.WithSource(
 			file.NewSource(flagconf),
