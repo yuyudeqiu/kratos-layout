@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -66,6 +67,13 @@ func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 			opts.WriteTimeout = c.Redis.WriteTimeout.AsDuration()
 		}
 		rdb = redis.NewClient(opts)
+
+		if err := redisotel.InstrumentTracing(rdb); err != nil {
+			return nil, nil, err
+		}
+		if err := redisotel.InstrumentMetrics(rdb); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	helper.Info("connected to PostgreSQL and initialized Redis")
