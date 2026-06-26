@@ -9,6 +9,9 @@ data:
   database:
     driver: postgres
     source: "host=127.0.0.1 port=5432 user=postgres password=postgres dbname=kratos sslmode=disable TimeZone=Asia/Shanghai"
+    max_idle_conns: 10
+    max_open_conns: 50
+    conn_max_lifetime: 1800s
   redis:
     addr: 127.0.0.1:6379
     read_timeout: 0.2s

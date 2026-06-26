@@ -35,6 +35,20 @@ func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 		return nil, nil, err
 	}
 
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, nil, err
+	}
+	if c.Database.MaxIdleConns > 0 {
+		sqlDB.SetMaxIdleConns(int(c.Database.MaxIdleConns))
+	}
+	if c.Database.MaxOpenConns > 0 {
+		sqlDB.SetMaxOpenConns(int(c.Database.MaxOpenConns))
+	}
+	if c.Database.ConnMaxLifetime != nil {
+		sqlDB.SetConnMaxLifetime(c.Database.ConnMaxLifetime.AsDuration())
+	}
+
 	helper.Info("connected to PostgreSQL")
 
 	cleanup := func() {
