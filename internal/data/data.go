@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/plugin/opentelemetry/tracing"
@@ -17,7 +18,8 @@ var ProviderSet = wire.NewSet(NewData, NewTaskRepo)
 
 // Data .
 type Data struct {
-	db *gorm.DB
+	db  *gorm.DB
+	rdb *redis.Client
 }
 
 // NewData .
@@ -49,18 +51,40 @@ func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 		sqlDB.SetConnMaxLifetime(c.Database.ConnMaxLifetime.AsDuration())
 	}
 
-	helper.Info("connected to PostgreSQL")
+	var rdb *redis.Client
+	if c.Redis != nil {
+		opts := &redis.Options{
+			Addr: c.Redis.Addr,
+		}
+		if c.Redis.Network != "" {
+			opts.Network = c.Redis.Network
+		}
+		if c.Redis.ReadTimeout != nil {
+			opts.ReadTimeout = c.Redis.ReadTimeout.AsDuration()
+		}
+		if c.Redis.WriteTimeout != nil {
+			opts.WriteTimeout = c.Redis.WriteTimeout.AsDuration()
+		}
+		rdb = redis.NewClient(opts)
+	}
+
+	helper.Info("connected to PostgreSQL and initialized Redis")
 
 	cleanup := func() {
 		helper.Info("closing the data resources")
 		sqlDB, err := db.DB()
 		if err != nil {
 			helper.Errorf("failed to get sql.DB: %v", err)
-			return
+		} else {
+			if err := sqlDB.Close(); err != nil {
+				helper.Errorf("failed to close db: %v", err)
+			}
 		}
-		if err := sqlDB.Close(); err != nil {
-			helper.Errorf("failed to close db: %v", err)
+		if rdb != nil {
+			if err := rdb.Close(); err != nil {
+				helper.Errorf("failed to close redis: %v", err)
+			}
 		}
 	}
-	return &Data{db: db}, cleanup, nil
+	return &Data{db: db, rdb: rdb}, cleanup, nil
 }
