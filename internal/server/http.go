@@ -1,6 +1,8 @@
 package server
 
 import (
+	stdhttp "net/http"
+
 	taskV1 "github.com/go-kratos/kratos-layout/api/task/v1"
 	"github.com/go-kratos/kratos-layout/internal/conf"
 	"github.com/go-kratos/kratos-layout/internal/service"
@@ -11,7 +13,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, task *service.TaskService, logger log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, task *service.TaskService, health *service.HealthService, logger log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
@@ -28,5 +30,23 @@ func NewHTTPServer(c *conf.Server, task *service.TaskService, logger log.Logger)
 	}
 	srv := http.NewServer(opts...)
 	taskV1.RegisterTaskHTTPServer(srv, task)
+
+	// Liveness Probe
+	srv.HandleFunc("/healthz/liveness", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		w.WriteHeader(stdhttp.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	// Readiness Probe
+	srv.HandleFunc("/healthz/readiness", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if err := health.Check(r.Context()); err != nil {
+			w.WriteHeader(stdhttp.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		w.WriteHeader(stdhttp.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
 	return srv
 }
