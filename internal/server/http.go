@@ -4,6 +4,7 @@ import (
 	v1 "github.com/go-kratos/kratos-layout/api/todo/v1"
 	"github.com/go-kratos/kratos-layout/internal/conf"
 	"github.com/go-kratos/kratos-layout/internal/service"
+	"github.com/go-kratos/kratos/contrib/otel/v3/tracing"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/middleware/validate"
 	"github.com/go-kratos/kratos/v3/transport/http"
@@ -16,6 +17,7 @@ import (
 func NewHTTPServer(c *conf.Server, todo *service.TodoService) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
+			tracing.Server(),
 			recovery.Recovery(),
 			validate.Validator(func(req any) error {
 				if msg, ok := req.(proto.Message); ok {

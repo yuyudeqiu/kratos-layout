@@ -9,6 +9,11 @@ message Bootstrap {
   Server server = 1;
   Data data = 2;
   Log log = 3;
+  Telemetry telemetry = 4;
+}
+
+message Telemetry {
+  string otlp_endpoint = 1;
 }
 
 message Log {

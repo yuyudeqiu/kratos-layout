@@ -5,6 +5,7 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/conf"
 	"github.com/go-kratos/kratos-layout/internal/service"
 
+	"github.com/go-kratos/kratos/contrib/otel/v3/tracing"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/middleware/validate"
 	"github.com/go-kratos/kratos/v3/transport/grpc"
@@ -17,6 +18,7 @@ import (
 func NewGRPCServer(c *conf.Server, todo *service.TodoService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
+			tracing.Server(),
 			recovery.Recovery(),
 			validate.Validator(func(req any) error {
 				if msg, ok := req.(proto.Message); ok {

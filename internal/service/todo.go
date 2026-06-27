@@ -11,6 +11,7 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/biz"
 
 	"go.einride.tech/aip/fieldmask"
+	"github.com/go-kratos/kratos/v3/log"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -33,6 +34,7 @@ func NewTodoService(uc *biz.TodoUsecase) *TodoService {
 
 // CreateTodo creates a todo item.
 func (s *TodoService) CreateTodo(ctx context.Context, req *v1.CreateTodoRequest) (*v1.Todo, error) {
+	log.InfoContext(ctx, "CreateTodo called", "title", req.GetTodo().GetTitle())
 	todo, err := s.uc.CreateTodo(ctx, convertTodo(req.GetTodo()))
 	if err != nil {
 		return nil, err
@@ -42,6 +44,7 @@ func (s *TodoService) CreateTodo(ctx context.Context, req *v1.CreateTodoRequest)
 
 // GetTodo returns a todo item by ID.
 func (s *TodoService) GetTodo(ctx context.Context, req *v1.GetTodoRequest) (*v1.Todo, error) {
+	log.InfoContext(ctx, "GetTodo called", "id", req.GetId())
 	todo, err := s.uc.GetTodo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -51,6 +54,7 @@ func (s *TodoService) GetTodo(ctx context.Context, req *v1.GetTodoRequest) (*v1.
 
 // ListTodos lists todo items.
 func (s *TodoService) ListTodos(ctx context.Context, req *v1.ListTodosRequest) (*v1.TodoSet, error) {
+	log.InfoContext(ctx, "ListTodos called", "page_size", req.PageSize, "offset", req.GetOffset())
 	if req.PageSize <= 0 {
 		req.PageSize = defaultPageSize
 	}
@@ -82,6 +86,7 @@ func (s *TodoService) ListTodos(ctx context.Context, req *v1.ListTodosRequest) (
 
 // UpdateTodo updates a todo item.
 func (s *TodoService) UpdateTodo(ctx context.Context, req *v1.UpdateTodoRequest) (*v1.Todo, error) {
+	log.InfoContext(ctx, "UpdateTodo called", "id", req.GetTodo().GetId())
 	if req.GetTodo().GetId() <= 0 || req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
 		return nil, biz.ErrTodoInvalidArgument
 	}
@@ -99,6 +104,7 @@ func (s *TodoService) UpdateTodo(ctx context.Context, req *v1.UpdateTodoRequest)
 
 // DeleteTodo deletes a todo item.
 func (s *TodoService) DeleteTodo(ctx context.Context, req *v1.DeleteTodoRequest) (*emptypb.Empty, error) {
+	log.InfoContext(ctx, "DeleteTodo called", "id", req.GetId())
 	if err := s.uc.DeleteTodo(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
@@ -107,6 +113,7 @@ func (s *TodoService) DeleteTodo(ctx context.Context, req *v1.DeleteTodoRequest)
 
 // WatchTodos streams todo snapshots from the server to the client.
 func (s *TodoService) WatchTodos(req *v1.WatchTodosRequest, stream v1.TodoService_WatchTodosServer) error {
+	log.InfoContext(stream.Context(), "WatchTodos called", "page_size", req.PageSize)
 	if req.PageSize <= 0 {
 		req.PageSize = defaultPageSize
 	}
@@ -137,6 +144,7 @@ func (s *TodoService) WatchTodos(req *v1.WatchTodosRequest, stream v1.TodoServic
 
 // SyncTodos exchanges todo changes in both directions.
 func (s *TodoService) SyncTodos(stream v1.TodoService_SyncTodosServer) error {
+	log.InfoContext(stream.Context(), "SyncTodos started")
 	for {
 		req, err := stream.Recv()
 		if errors.Is(err, io.EOF) {

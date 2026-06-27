@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-kratos/kratos-layout/internal/conf"
+	"github.com/go-kratos/kratos-layout/internal/server"
 
 	"github.com/go-kratos/kratos/contrib/otel/v3/tracing"
 	"github.com/go-kratos/kratos/v3"
@@ -150,6 +152,17 @@ func main() {
 		defer logCleanup()
 	}
 	log.SetDefault(logger)
+
+	// Initialize OpenTelemetry TracerProvider.
+	tp, err := server.NewTracerProvider(bc.Telemetry, Name)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			log.Error("shutdown tracer provider", "error", err)
+		}
+	}()
 
 	app, cleanup, err := wireApp(bc.Server, bc.Data, logger)
 	if err != nil {
