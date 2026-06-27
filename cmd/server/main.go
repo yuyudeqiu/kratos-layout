@@ -164,7 +164,18 @@ func main() {
 		}
 	}()
 
-	app, cleanup, err := wireApp(bc.Server, bc.Data, logger)
+	// Initialize OpenTelemetry MeterProvider (Prometheus exporter).
+	mp, metricsHandler, err := server.NewMeterProvider(Name)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := mp.Shutdown(context.Background()); err != nil {
+			log.Error("shutdown meter provider", "error", err)
+		}
+	}()
+
+	app, cleanup, err := wireApp(bc.Server, bc.Data, logger, metricsHandler)
 	if err != nil {
 		panic(err)
 	}

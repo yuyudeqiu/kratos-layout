@@ -14,6 +14,7 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/service"
 	"github.com/go-kratos/kratos/v3"
 	"log/slog"
+	"net/http"
 )
 
 import (
@@ -23,7 +24,7 @@ import (
 // Injectors from wire.go:
 
 // wireApp init kratos application.
-func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger) (*kratos.App, func(), error) {
+func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger, handler http.Handler) (*kratos.App, func(), error) {
 	dataData, cleanup, err := data.NewData(confData, logger)
 	if err != nil {
 		return nil, nil, err
@@ -32,7 +33,7 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger) 
 	todoUsecase := biz.NewTodoUsecase(todoRepo)
 	todoService := service.NewTodoService(todoUsecase)
 	grpcServer := server.NewGRPCServer(confServer, todoService)
-	httpServer := server.NewHTTPServer(confServer, todoService)
+	httpServer := server.NewHTTPServer(confServer, todoService, handler)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup()

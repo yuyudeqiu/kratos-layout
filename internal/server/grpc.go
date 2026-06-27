@@ -19,6 +19,7 @@ func NewGRPCServer(c *conf.Server, todo *service.TodoService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			tracing.Server(),
+			newServerMetricsMiddleware(serviceName),
 			recovery.Recovery(),
 			validate.Validator(func(req any) error {
 				if msg, ok := req.(proto.Message); ok {
@@ -41,5 +42,9 @@ func NewGRPCServer(c *conf.Server, todo *service.TodoService) *grpc.Server {
 	}
 	srv := grpc.NewServer(opts...)
 	v1.RegisterTodoServiceServer(srv, todo)
+
+	// NOTE: Kratos v3 gRPC server registers grpc.health.v1.Health automatically,
+	// so no manual registration is needed.
+
 	return srv
 }
