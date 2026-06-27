@@ -27,14 +27,6 @@ service TodoService {
     };
   }
 
-  // GetTodo returns a single todo item by its id.
-  // Returns NOT_FOUND if no todo exists with the supplied id.
-  rpc GetTodo (GetTodoRequest) returns (Todo) {
-    option (google.api.http) = {
-      get: "/v1/todos/{id}"
-    };
-  }
-
   // ListTodos returns a page of todo items, optionally filtered and ordered.
   // Use the next_page_token from TodoSet to retrieve subsequent pages.
   // Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
@@ -56,14 +48,6 @@ service TodoService {
     };
   }
 
-  // DeleteTodo permanently removes a todo item by its id.
-  // Returns NOT_FOUND if no todo exists with the supplied id.
-  rpc DeleteTodo (DeleteTodoRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v1/todos/{id}"
-    };
-  }
-
   // WatchTodos opens a server-side stream that emits a TodoEvent for every
   // create, update, or delete that matches the supplied filter and ordering.
   // The stream remains open until the client cancels or the server terminates it.
@@ -81,6 +65,22 @@ service TodoService {
     option (google.api.http) = {
       post: "/v1/todos/sync"
       body: "*"
+    };
+  }
+
+  // GetTodo returns a single todo item by its id.
+  // Returns NOT_FOUND if no todo exists with the supplied id.
+  rpc GetTodo (GetTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      get: "/v1/todos/{id}"
+    };
+  }
+
+  // DeleteTodo permanently removes a todo item by its id.
+  // Returns NOT_FOUND if no todo exists with the supplied id.
+  rpc DeleteTodo (DeleteTodoRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/todos/{id}"
     };
   }
 }
