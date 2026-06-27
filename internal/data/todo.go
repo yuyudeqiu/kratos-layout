@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/go-kratos/kratos-layout/internal/biz"
@@ -54,8 +55,22 @@ func (r *todoRepo) ListTodos(ctx context.Context, opts ...biz.ListOption) ([]*bi
 	}
 
 	db := r.db.WithContext(ctx)
-	db = applyFilter(db, options.Filter)
-	db = applyOrderBy(db, options.OrderBy)
+	if options.Completed != nil {
+		db = db.Where("completed = ?", *options.Completed)
+	}
+	if options.Search != "" {
+		db = db.Where("title LIKE ? OR content LIKE ?", "%"+options.Search+"%", "%"+options.Search+"%")
+	}
+	if options.OrderBy != "" {
+		switch strings.ToLower(options.OrderBy) {
+		case "id asc", "id desc", "title asc", "title desc", "create_time asc", "create_time desc", "update_time asc", "update_time desc":
+			db = db.Order(options.OrderBy)
+		default:
+			db = db.Order("id ASC")
+		}
+	} else {
+		db = db.Order("id ASC")
+	}
 
 	var models []TodoModel
 	if err := db.

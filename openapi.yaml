@@ -50,35 +50,25 @@ paths:
                   schema:
                     type: integer
                     format: int32
-                - name: pageToken
+                - name: offset
                   in: query
-                  description: |-
-                    Optional. Token from a previous response's next_page_token used to fetch
-                     the next page. Leave empty to request the first page.
+                  description: Optional. The number of results to skip before starting to return.
                   schema:
-                    type: string
-                - name: filter
+                    type: integer
+                    format: int32
+                - name: completed
                   in: query
-                  description: |-
-                    Optional. The standard list filter.
-                     Supported fields:
-                        * `title` (i.e. `title:"bug"`)
-                        * `content` (i.e. `content:"docs"`)
-                        * `completed` (i.e. `completed` or `NOT completed`)
-                        * `create_time` range (i.e. `create_time>="2026-01-01T00:00:00Z"`)
+                  description: Optional. Filter by completed status.
+                  schema:
+                    type: boolean
+                - name: search
+                  in: query
+                  description: Optional. Search query to match against title or content.
                   schema:
                     type: string
                 - name: orderBy
                   in: query
-                  description: |-
-                    Optional. A comma-separated list of fields to order by.
-                     Supported fields:
-                        * `id`
-                        * `title`
-                        * `create_time`
-                        * `update_time`
-                     Append ` desc` to a field for descending order, e.g. `create_time desc`.
-                     Defaults to ascending order when no direction is supplied.
+                  description: Optional. Field and direction to order by, e.g. "id desc".
                   schema:
                     type: string
             responses:
@@ -162,14 +152,20 @@ paths:
                   schema:
                     type: integer
                     format: int32
-                - name: pageToken
+                - name: offset
                   in: query
-                  description: Optional. Page token used to resume from a prior snapshot.
+                  description: Optional. The number of results to skip.
                   schema:
-                    type: string
-                - name: filter
+                    type: integer
+                    format: int32
+                - name: completed
                   in: query
-                  description: Optional. List filter expression. Same syntax as ListTodosRequest.filter.
+                  description: Optional. Filter by completed status.
+                  schema:
+                    type: boolean
+                - name: search
+                  in: query
+                  description: Optional. Search query to match against title or content.
                   schema:
                     type: string
                 - name: orderBy

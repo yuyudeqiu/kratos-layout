@@ -94,20 +94,17 @@ func TestTodoServiceListTodosPagination(t *testing.T) {
 		}
 	}
 
-	firstPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{PageSize: 2})
+	firstPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{PageSize: 2, Offset: 0})
 	if err != nil {
 		t.Fatalf("ListTodos(first page) error = %v", err)
 	}
 	if len(firstPage.GetTodos()) != 2 {
 		t.Fatalf("ListTodos(first page) len = %d, want 2", len(firstPage.GetTodos()))
 	}
-	if firstPage.GetNextPageToken() == "" {
-		t.Fatal("ListTodos(first page) next_page_token is empty")
-	}
 
 	secondPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{
-		PageSize:  2,
-		PageToken: firstPage.GetNextPageToken(),
+		PageSize: 2,
+		Offset:   2,
 	})
 	if err != nil {
 		t.Fatalf("ListTodos(second page) error = %v", err)
@@ -115,15 +112,12 @@ func TestTodoServiceListTodosPagination(t *testing.T) {
 	if len(secondPage.GetTodos()) != 1 {
 		t.Fatalf("ListTodos(second page) len = %d, want 1", len(secondPage.GetTodos()))
 	}
-	if secondPage.GetNextPageToken() != "" {
-		t.Fatalf("ListTodos(second page) next_page_token = %q, want empty", secondPage.GetNextPageToken())
-	}
 	if secondPage.GetTodos()[0].GetTitle() != "third" {
 		t.Fatalf("ListTodos(second page) title = %q, want third", secondPage.GetTodos()[0].GetTitle())
 	}
 }
 
-func TestTodoServiceListTodosFilterAndOrderByValidation(t *testing.T) {
+func TestTodoServiceListTodosFilterAndOrderBy(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestTodoService()
 
@@ -137,19 +131,21 @@ func TestTodoServiceListTodosFilterAndOrderByValidation(t *testing.T) {
 		}
 	}
 
+	completedVal := true
 	reply, err := svc.ListTodos(ctx, &v1.ListTodosRequest{
-		PageSize: 10,
-		Filter:   `title:"fix" AND completed`,
-		OrderBy:  "title desc",
+		PageSize:  10,
+		Completed: &completedVal,
+		Search:    "fix",
+		OrderBy:   "title desc",
 	})
 	if err != nil {
 		t.Fatalf("ListTodos(filter/order) error = %v", err)
 	}
-	if len(reply.GetTodos()) != 3 {
-		t.Fatalf("ListTodos(filter/order) len = %d, want 3", len(reply.GetTodos()))
+	if len(reply.GetTodos()) != 1 {
+		t.Fatalf("ListTodos(filter/order) len = %d, want 1", len(reply.GetTodos()))
 	}
-	if reply.GetTodos()[0].GetTitle() != "write docs" {
-		t.Fatalf("ListTodos(filter/order) first title = %q, want ID order", reply.GetTodos()[0].GetTitle())
+	if reply.GetTodos()[0].GetTitle() != "fix api" {
+		t.Fatalf("ListTodos(filter/order) first title = %q, want fix api", reply.GetTodos()[0].GetTitle())
 	}
 }
 
@@ -165,15 +161,6 @@ func TestTodoServiceValidation(t *testing.T) {
 		UpdateMask: &fieldmaskpb.FieldMask{},
 	}); !kratoserrors.IsBadRequest(err) {
 		t.Fatalf("UpdateTodo(empty mask) error = %v, want bad request", err)
-	}
-	if _, err := svc.ListTodos(ctx, &v1.ListTodosRequest{PageToken: "bad-token"}); err == nil {
-		t.Fatal("ListTodos(bad token) error = nil, want error")
-	}
-	if _, err := svc.ListTodos(ctx, &v1.ListTodosRequest{Filter: `unknown:"value"`}); err == nil {
-		t.Fatal("ListTodos(unsupported filter) error = nil, want error")
-	}
-	if _, err := svc.ListTodos(ctx, &v1.ListTodosRequest{OrderBy: "content"}); err == nil {
-		t.Fatal("ListTodos(unsupported order_by) error = nil, want error")
 	}
 	if _, err := svc.DeleteTodo(ctx, &v1.DeleteTodoRequest{Id: 1}); !kratoserrors.IsNotFound(err) {
 		t.Fatalf("DeleteTodo(missing id) error = %v, want not found", err)

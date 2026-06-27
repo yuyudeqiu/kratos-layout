@@ -11,9 +11,6 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/biz"
 
 	"go.einride.tech/aip/fieldmask"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -54,50 +51,28 @@ func (s *TodoService) GetTodo(ctx context.Context, req *v1.GetTodoRequest) (*v1.
 
 // ListTodos lists todo items.
 func (s *TodoService) ListTodos(ctx context.Context, req *v1.ListTodosRequest) (*v1.TodoSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("id", filtering.TypeInt),
-		filtering.DeclareIdent("title", filtering.TypeString),
-		filtering.DeclareIdent("content", filtering.TypeString),
-		filtering.DeclareIdent("completed", filtering.TypeBool),
-		filtering.DeclareIdent("create_time", filtering.TypeTimestamp),
-		filtering.DeclareIdent("update_time", filtering.TypeTimestamp),
-	)
-	if err != nil {
-		return nil, err
-	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		return nil, err
-	}
-	if err := orderBy.ValidateForPaths("id", "title", "create_time", "update_time"); err != nil {
-		return nil, err
-	}
 	if req.PageSize <= 0 {
 		req.PageSize = defaultPageSize
 	}
+
+	var completed *bool
+	if req.Completed != nil {
+		c := req.GetCompleted()
+		completed = &c
+	}
+
 	todos, err := s.uc.ListTodos(ctx,
-		biz.ListFilter(filter),
-		biz.ListOrderBy(orderBy),
+		biz.ListCompleted(completed),
+		biz.ListSearch(req.GetSearch()),
+		biz.ListOrderBy(req.GetOrderBy()),
 		biz.ListLimit(int(req.PageSize)),
-		biz.ListOffset(int(pageToken.Offset)),
+		biz.ListOffset(int(req.GetOffset())),
 	)
 	if err != nil {
 		return nil, err
 	}
 	set := &v1.TodoSet{
 		Todos: make([]*v1.Todo, 0, len(todos)),
-	}
-	if len(todos) >= int(req.PageSize) {
-		set.NextPageToken = pageToken.Next(req).String()
 	}
 	for _, todo := range todos {
 		set.Todos = append(set.Todos, convertTodoReply(todo))
@@ -132,41 +107,22 @@ func (s *TodoService) DeleteTodo(ctx context.Context, req *v1.DeleteTodoRequest)
 
 // WatchTodos streams todo snapshots from the server to the client.
 func (s *TodoService) WatchTodos(req *v1.WatchTodosRequest, stream v1.TodoService_WatchTodosServer) error {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("id", filtering.TypeInt),
-		filtering.DeclareIdent("title", filtering.TypeString),
-		filtering.DeclareIdent("content", filtering.TypeString),
-		filtering.DeclareIdent("completed", filtering.TypeBool),
-		filtering.DeclareIdent("create_time", filtering.TypeTimestamp),
-		filtering.DeclareIdent("update_time", filtering.TypeTimestamp),
-	)
-	if err != nil {
-		return err
-	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		return err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		return err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		return err
-	}
-	if err := orderBy.ValidateForPaths("id", "title", "create_time", "update_time"); err != nil {
-		return err
-	}
 	if req.PageSize <= 0 {
 		req.PageSize = defaultPageSize
 	}
+
+	var completed *bool
+	if req.Completed != nil {
+		c := req.GetCompleted()
+		completed = &c
+	}
+
 	todos, err := s.uc.ListTodos(stream.Context(),
-		biz.ListFilter(filter),
-		biz.ListOrderBy(orderBy),
+		biz.ListCompleted(completed),
+		biz.ListSearch(req.GetSearch()),
+		biz.ListOrderBy(req.GetOrderBy()),
 		biz.ListLimit(int(req.PageSize)),
-		biz.ListOffset(int(pageToken.Offset)),
+		biz.ListOffset(int(req.GetOffset())),
 	)
 	if err != nil {
 		return err

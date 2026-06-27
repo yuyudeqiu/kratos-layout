@@ -8,8 +8,6 @@ import (
 	v1 "github.com/go-kratos/kratos-layout/api/todo/v1"
 
 	"github.com/go-kratos/kratos/v3/errors"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 var (
@@ -43,21 +41,29 @@ type ListOption func(*ListOptions)
 
 // ListOptions are todo list query options.
 type ListOptions struct {
-	Filter  filtering.Filter
-	OrderBy ordering.OrderBy
-	Offset  int
-	Limit   int
+	Completed *bool
+	Search    string
+	OrderBy   string
+	Offset    int
+	Limit     int
 }
 
-// ListFilter sets a standard AIP filter.
-func ListFilter(filter filtering.Filter) ListOption {
+// ListCompleted sets a standard completed filter.
+func ListCompleted(completed *bool) ListOption {
 	return func(o *ListOptions) {
-		o.Filter = filter
+		o.Completed = completed
 	}
 }
 
-// ListOrderBy sets a standard AIP order_by value.
-func ListOrderBy(orderBy ordering.OrderBy) ListOption {
+// ListSearch sets a standard search query.
+func ListSearch(search string) ListOption {
+	return func(o *ListOptions) {
+		o.Search = search
+	}
+}
+
+// ListOrderBy sets a standard order_by value.
+func ListOrderBy(orderBy string) ListOption {
 	return func(o *ListOptions) {
 		o.OrderBy = orderBy
 	}

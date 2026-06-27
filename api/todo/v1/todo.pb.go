@@ -271,26 +271,14 @@ type ListTodosRequest struct {
 	// Optional. Maximum number of todo items to return in a single page.
 	// The server may apply a default and a maximum when unset or out of range.
 	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	// Optional. Token from a previous response's next_page_token used to fetch
-	// the next page. Leave empty to request the first page.
-	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	// Optional. The standard list filter.
-	// Supported fields:
-	//   - `title` (i.e. `title:"bug"`)
-	//   - `content` (i.e. `content:"docs"`)
-	//   - `completed` (i.e. `completed` or `NOT completed`)
-	//   - `create_time` range (i.e. `create_time>="2026-01-01T00:00:00Z"`)
-	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
-	// Optional. A comma-separated list of fields to order by.
-	// Supported fields:
-	//   - `id`
-	//   - `title`
-	//   - `create_time`
-	//   - `update_time`
-	//
-	// Append ` desc` to a field for descending order, e.g. `create_time desc`.
-	// Defaults to ascending order when no direction is supplied.
-	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	// Optional. The number of results to skip before starting to return.
+	Offset int32 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	// Optional. Filter by completed status.
+	Completed *bool `protobuf:"varint,3,opt,name=completed,proto3,oneof" json:"completed,omitempty"`
+	// Optional. Search query to match against title or content.
+	Search string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
+	// Optional. Field and direction to order by, e.g. "id desc".
+	OrderBy       string `protobuf:"bytes,5,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -332,16 +320,23 @@ func (x *ListTodosRequest) GetPageSize() int32 {
 	return 0
 }
 
-func (x *ListTodosRequest) GetPageToken() string {
+func (x *ListTodosRequest) GetOffset() int32 {
 	if x != nil {
-		return x.PageToken
+		return x.Offset
 	}
-	return ""
+	return 0
 }
 
-func (x *ListTodosRequest) GetFilter() string {
+func (x *ListTodosRequest) GetCompleted() bool {
+	if x != nil && x.Completed != nil {
+		return *x.Completed
+	}
+	return false
+}
+
+func (x *ListTodosRequest) GetSearch() string {
 	if x != nil {
-		return x.Filter
+		return x.Search
 	}
 	return ""
 }
@@ -463,12 +458,14 @@ type WatchTodosRequest struct {
 	// Optional. Maximum number of todo items returned in the initial snapshot
 	// before live events begin streaming.
 	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	// Optional. Page token used to resume from a prior snapshot.
-	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	// Optional. List filter expression. Same syntax as ListTodosRequest.filter.
-	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Optional. The number of results to skip.
+	Offset int32 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	// Optional. Filter by completed status.
+	Completed *bool `protobuf:"varint,3,opt,name=completed,proto3,oneof" json:"completed,omitempty"`
+	// Optional. Search query to match against title or content.
+	Search string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
 	// Optional. Order specification. Same syntax as ListTodosRequest.order_by.
-	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	OrderBy       string `protobuf:"bytes,5,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -510,16 +507,23 @@ func (x *WatchTodosRequest) GetPageSize() int32 {
 	return 0
 }
 
-func (x *WatchTodosRequest) GetPageToken() string {
+func (x *WatchTodosRequest) GetOffset() int32 {
 	if x != nil {
-		return x.PageToken
+		return x.Offset
 	}
-	return ""
+	return 0
 }
 
-func (x *WatchTodosRequest) GetFilter() string {
+func (x *WatchTodosRequest) GetCompleted() bool {
+	if x != nil && x.Completed != nil {
+		return *x.Completed
+	}
+	return false
+}
+
+func (x *WatchTodosRequest) GetSearch() string {
 	if x != nil {
-		return x.Filter
+		return x.Search
 	}
 	return ""
 }
@@ -692,25 +696,29 @@ const file_todo_v1_todo_proto_rawDesc = "" +
 	"\x11CreateTodoRequest\x12&\n" +
 	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\x03\xe0A\x02R\x04todo\"%\n" +
 	"\x0eGetTodoRequest\x12\x13\n" +
-	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id\"\x81\x01\n" +
+	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id\"\xab\x01\n" +
 	"\x10ListTodosRequest\x12\x1b\n" +
-	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12!\n" +
+	"\tcompleted\x18\x03 \x01(\bH\x00R\tcompleted\x88\x01\x01\x12\x16\n" +
+	"\x06search\x18\x04 \x01(\tR\x06search\x12\x19\n" +
+	"\border_by\x18\x05 \x01(\tR\aorderByB\f\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
-	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
-	"\border_by\x18\x04 \x01(\tR\aorderBy\"}\n" +
+	"_completed\"}\n" +
 	"\x11UpdateTodoRequest\x12&\n" +
 	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\x03\xe0A\x02R\x04todo\x12@\n" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
 	"updateMask\"(\n" +
 	"\x11DeleteTodoRequest\x12\x13\n" +
-	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id\"\x82\x01\n" +
+	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id\"\xac\x01\n" +
 	"\x11WatchTodosRequest\x12\x1b\n" +
-	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12!\n" +
+	"\tcompleted\x18\x03 \x01(\bH\x00R\tcompleted\x88\x01\x01\x12\x16\n" +
+	"\x06search\x18\x04 \x01(\tR\x06search\x12\x19\n" +
+	"\border_by\x18\x05 \x01(\tR\aorderByB\f\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
-	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
-	"\border_by\x18\x04 \x01(\tR\aorderBy\"\x99\x01\n" +
+	"_completed\"\x99\x01\n" +
 	"\x0fSyncTodoRequest\x12\x16\n" +
 	"\x06action\x18\x01 \x01(\tR\x06action\x12!\n" +
 	"\x04todo\x18\x02 \x01(\v2\r.todo.v1.TodoR\x04todo\x12\x0e\n" +
@@ -801,6 +809,8 @@ func file_todo_v1_todo_proto_init() {
 	if File_todo_v1_todo_proto != nil {
 		return
 	}
+	file_todo_v1_todo_proto_msgTypes[4].OneofWrappers = []any{}
+	file_todo_v1_todo_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

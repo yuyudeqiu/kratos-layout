@@ -128,25 +128,14 @@ message ListTodosRequest {
   // Optional. Maximum number of todo items to return in a single page.
   // The server may apply a default and a maximum when unset or out of range.
   int32 page_size = 1;
-  // Optional. Token from a previous response's next_page_token used to fetch
-  // the next page. Leave empty to request the first page.
-  string page_token = 2;
-  // Optional. The standard list filter.
-  // Supported fields:
-  //    * `title` (i.e. `title:"bug"`)
-  //    * `content` (i.e. `content:"docs"`)
-  //    * `completed` (i.e. `completed` or `NOT completed`)
-  //    * `create_time` range (i.e. `create_time>="2026-01-01T00:00:00Z"`)
-  string filter = 3;
-  // Optional. A comma-separated list of fields to order by.
-  // Supported fields:
-  //    * `id`
-  //    * `title`
-  //    * `create_time`
-  //    * `update_time`
-  // Append ` desc` to a field for descending order, e.g. `create_time desc`.
-  // Defaults to ascending order when no direction is supplied.
-  string order_by = 4;
+  // Optional. The number of results to skip before starting to return.
+  int32 offset = 2;
+  // Optional. Filter by completed status.
+  optional bool completed = 3;
+  // Optional. Search query to match against title or content.
+  string search = 4;
+  // Optional. Field and direction to order by, e.g. "id desc".
+  string order_by = 5;
 }
 
 // UpdateTodoRequest is the input for TodoService.UpdateTodo.
@@ -171,12 +160,14 @@ message WatchTodosRequest {
   // Optional. Maximum number of todo items returned in the initial snapshot
   // before live events begin streaming.
   int32 page_size = 1;
-  // Optional. Page token used to resume from a prior snapshot.
-  string page_token = 2;
-  // Optional. List filter expression. Same syntax as ListTodosRequest.filter.
-  string filter = 3;
+  // Optional. The number of results to skip.
+  int32 offset = 2;
+  // Optional. Filter by completed status.
+  optional bool completed = 3;
+  // Optional. Search query to match against title or content.
+  string search = 4;
   // Optional. Order specification. Same syntax as ListTodosRequest.order_by.
-  string order_by = 4;
+  string order_by = 5;
 }
 
 // SyncTodoRequest is a single client message in the SyncTodos bidirectional
