@@ -1,44 +1,50 @@
 package data
 
 import (
-	"cmp"
 	"context"
-	"slices"
-	"sync"
 	"time"
 
 	"github.com/go-kratos/kratos-layout/internal/biz"
+
+	"gorm.io/gorm"
 )
 
-type todoRepo struct {
-	data *Data
+// TodoModel is the GORM model for the todos table.
+type TodoModel struct {
+	ID         int64     `gorm:"primaryKey;autoIncrement"`
+	Title      string    `gorm:"type:varchar(255);not null"`
+	Content    string    `gorm:"type:text"`
+	Completed  bool      `gorm:"default:false"`
+	CreateTime time.Time `gorm:"autoCreateTime"`
+	UpdateTime time.Time `gorm:"autoUpdateTime"`
+}
 
-	mu     sync.RWMutex
-	nextID int64
-	todos  map[int64]*biz.Todo
+// TableName overrides the default table name.
+func (TodoModel) TableName() string {
+	return "todos"
+}
+
+type todoRepo struct {
+	db *gorm.DB
 }
 
 // NewTodoRepo creates a new TodoRepo instance.
 func NewTodoRepo(data *Data) biz.TodoRepo {
-	return &todoRepo{
-		data:   data,
-		nextID: 1,
-		todos:  make(map[int64]*biz.Todo),
-	}
+	return &todoRepo{db: data.DB}
 }
 
-func (r *todoRepo) FindByID(_ context.Context, id int64) (*biz.Todo, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	todo, ok := r.todos[id]
-	if !ok {
-		return nil, biz.ErrTodoNotFound
+func (r *todoRepo) FindByID(ctx context.Context, id int64) (*biz.Todo, error) {
+	var model TodoModel
+	if err := r.db.WithContext(ctx).First(&model, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, biz.ErrTodoNotFound
+		}
+		return nil, err
 	}
-	return cloneTodo(todo), nil
+	return model.toBiz(), nil
 }
 
-func (r *todoRepo) ListTodos(_ context.Context, opts ...biz.ListOption) ([]*biz.Todo, error) {
+func (r *todoRepo) ListTodos(ctx context.Context, opts ...biz.ListOption) ([]*biz.Todo, error) {
 	options := biz.ListOptions{Limit: 20}
 	for _, opt := range opts {
 		opt(&options)
@@ -47,77 +53,89 @@ func (r *todoRepo) ListTodos(_ context.Context, opts ...biz.ListOption) ([]*biz.
 		return nil, biz.ErrTodoInvalidArgument
 	}
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	db := r.db.WithContext(ctx)
+	db = applyFilter(db, options.Filter)
+	db = applyOrderBy(db, options.OrderBy)
 
-	todos := make([]*biz.Todo, 0, len(r.todos))
-	for _, todo := range r.todos {
-		todos = append(todos, cloneTodo(todo))
+	var models []TodoModel
+	if err := db.
+		Offset(options.Offset).
+		Limit(options.Limit).
+		Find(&models).Error; err != nil {
+		return nil, err
 	}
-	slices.SortFunc(todos, func(a, b *biz.Todo) int {
-		return cmp.Compare(a.ID, b.ID)
-	})
 
-	if options.Offset >= len(todos) {
-		return []*biz.Todo{}, nil
+	todos := make([]*biz.Todo, 0, len(models))
+	for _, m := range models {
+		todos = append(todos, m.toBiz())
 	}
-	end := options.Offset + options.Limit
-	if end > len(todos) {
-		end = len(todos)
-	}
-	return todos[options.Offset:end], nil
+	return todos, nil
 }
 
-func (r *todoRepo) CreateTodo(_ context.Context, todo *biz.Todo) (*biz.Todo, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	now := time.Now()
-	todo = cloneTodo(todo)
-	todo.ID = r.nextID
-	todo.CreateTime = now
-	todo.UpdateTime = now
-	r.todos[todo.ID] = cloneTodo(todo)
-	r.nextID++
-	return cloneTodo(todo), nil
-}
-
-func (r *todoRepo) UpdateTodo(_ context.Context, todo *biz.Todo) (*biz.Todo, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	current, ok := r.todos[todo.ID]
-	if !ok {
-		return nil, biz.ErrTodoNotFound
+func (r *todoRepo) CreateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, error) {
+	model := fromBizTodo(todo)
+	if err := r.db.WithContext(ctx).Create(&model).Error; err != nil {
+		return nil, err
 	}
-	updated := cloneTodo(todo)
-	updated.CreateTime = current.CreateTime
-	updated.UpdateTime = time.Now()
-	r.todos[updated.ID] = cloneTodo(updated)
-	return cloneTodo(updated), nil
+	return model.toBiz(), nil
 }
 
-func (r *todoRepo) DeleteTodo(_ context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (r *todoRepo) UpdateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, error) {
+	var model TodoModel
+	if err := r.db.WithContext(ctx).First(&model, todo.ID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, biz.ErrTodoNotFound
+		}
+		return nil, err
+	}
+	// Only update mutable fields, preserve CreateTime.
+	updates := map[string]any{
+		"title":     todo.Title,
+		"content":   todo.Content,
+		"completed": todo.Completed,
+	}
+	if err := r.db.WithContext(ctx).Model(&model).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+	// Re-fetch to get the updated record with UpdateTime.
+	if err := r.db.WithContext(ctx).First(&model, todo.ID).Error; err != nil {
+		return nil, err
+	}
+	return model.toBiz(), nil
+}
 
-	if _, ok := r.todos[id]; !ok {
+func (r *todoRepo) DeleteTodo(ctx context.Context, id int64) error {
+	result := r.db.WithContext(ctx).Delete(&TodoModel{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
 		return biz.ErrTodoNotFound
 	}
-	delete(r.todos, id)
 	return nil
 }
 
-func cloneTodo(todo *biz.Todo) *biz.Todo {
-	if todo == nil {
-		return nil
-	}
+// toBiz converts a TodoModel to a biz.Todo.
+func (m TodoModel) toBiz() *biz.Todo {
 	return &biz.Todo{
-		ID:         todo.ID,
-		Title:      todo.Title,
-		Content:    todo.Content,
-		Completed:  todo.Completed,
-		CreateTime: todo.CreateTime,
-		UpdateTime: todo.UpdateTime,
+		ID:         m.ID,
+		Title:      m.Title,
+		Content:    m.Content,
+		Completed:  m.Completed,
+		CreateTime: m.CreateTime,
+		UpdateTime: m.UpdateTime,
+	}
+}
+
+// fromBizTodo converts a biz.Todo to a TodoModel.
+func fromBizTodo(todo *biz.Todo) TodoModel {
+	if todo == nil {
+		return TodoModel{}
+	}
+	return TodoModel{
+		ID:        todo.ID,
+		Title:     todo.Title,
+		Content:   todo.Content,
+		Completed: todo.Completed,
 	}
 }

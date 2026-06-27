@@ -12,10 +12,19 @@ import (
 	kratoserrors "github.com/go-kratos/kratos/v3/errors"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
 )
 
 func newTestTodoService() *TodoService {
-	repo := data.NewTodoRepo(&data.Data{})
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	if err := db.AutoMigrate(&data.TodoModel{}); err != nil {
+		panic(err)
+	}
+	repo := data.NewTodoRepo(&data.Data{DB: db})
 	uc := biz.NewTodoUsecase(repo)
 	return NewTodoService(uc)
 }

@@ -60,13 +60,15 @@ type TodoServiceHTTPServer interface {
 
 func RegisterTodoServiceHTTPServer(s *http.Server, srv TodoServiceHTTPServer) {
 	r := s.Route("/")
+	// Static routes must be registered before dynamic routes ({id}) to avoid
+	// path parameters capturing literal segments like "list", "watch", "sync".
 	r.Handle("POST", "/v1/todos/create", _TodoService_CreateTodo0_HTTP_Handler(srv))
-	r.Handle("GET", "/v1/todos/{id}", _TodoService_GetTodo0_HTTP_Handler(srv))
-	r.Handle("GET", "/v1/todos/list", _TodoService_ListTodos0_HTTP_Handler(srv))
 	r.Handle("PUT", "/v1/todos/update", _TodoService_UpdateTodo0_HTTP_Handler(srv))
-	r.Handle("DELETE", "/v1/todos/{id}", _TodoService_DeleteTodo0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/todos/list", _TodoService_ListTodos0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/todos/watch", _TodoService_WatchTodos0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/todos/sync", _TodoService_SyncTodos0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/todos/{id}", _TodoService_GetTodo0_HTTP_Handler(srv))
+	r.Handle("DELETE", "/v1/todos/{id}", _TodoService_DeleteTodo0_HTTP_Handler(srv))
 }
 
 type TodoService_SyncTodosHTTPServer struct {

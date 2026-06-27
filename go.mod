@@ -3,18 +3,33 @@ module github.com/go-kratos/kratos-layout
 go 1.25.7
 
 require (
+	github.com/glebarez/sqlite v1.11.0
 	github.com/google/wire v0.6.0
 	go.einride.tech/aip v0.86.3
 	go.uber.org/automaxprocs v1.6.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260519071638-aa98bba5eb94
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
+	gorm.io/driver/mysql v1.6.0
+	gorm.io/gorm v1.31.2
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	modernc.org/libc v1.22.5 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/sqlite v1.23.1 // indirect
 )
 
 require (
