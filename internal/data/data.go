@@ -1,12 +1,18 @@
 package data
 
 import (
+	"context"
+	"log/slog"
+	"time"
+
 	"github.com/go-kratos/kratos-layout/internal/conf"
 
 	"github.com/go-kratos/kratos/v3/log"
 	"github.com/google/wire"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	gormlog "gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 // ProviderSet is data providers.
@@ -18,9 +24,25 @@ type Data struct {
 }
 
 // NewData creates a Data instance and connects to the database.
-func NewData(c *conf.Data) (*Data, func(), error) {
-	db, err := gorm.Open(mysql.Open(c.Database.Source), &gorm.Config{})
+func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
+	gormLogger := gormlog.NewSlogLogger(
+		logger,
+		gormlog.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  gormLogLevel(logger),
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      true,
+		},
+	)
+	db, err := gorm.Open(mysql.Open(c.Database.Source), &gorm.Config{
+		Logger: gormLogger,
+	})
 	if err != nil {
+		return nil, nil, err
+	}
+	// Register OpenTelemetry tracing plugin so each DB operation creates a
+	// child span (e.g. "gorm.query", "gorm.create") under the request span.
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, nil, err
 	}
 	if err := db.AutoMigrate(&TodoModel{}); err != nil {
@@ -39,4 +61,14 @@ func NewData(c *conf.Data) (*Data, func(), error) {
 		}
 	}
 	return d, cleanup, nil
+}
+
+// gormLogLevel maps the slog logger's level to GORM's log level.
+// When the app runs at debug, GORM emits Info (SQL queries).
+// When the app runs at info/warn/error, GORM only emits Warn (slow queries + errors).
+func gormLogLevel(logger *slog.Logger) gormlog.LogLevel {
+	if logger.Handler().Enabled(context.Background(), slog.LevelDebug) {
+		return gormlog.Info
+	}
+	return gormlog.Warn
 }

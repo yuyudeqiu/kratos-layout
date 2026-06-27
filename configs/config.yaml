@@ -19,5 +19,4 @@ log:
   add_source: true
   # output_path: ""
 telemetry:
-  otlp_endpoint: ""
-  # otlp_endpoint: "tempo:4317"  # 生产环境配置 Tempo OTLP collector 地址
+  otlp_endpoint: "localhost:4317"

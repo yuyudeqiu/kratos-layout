@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/go-kratos/kratos-layout/internal/conf"
 
@@ -12,6 +13,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // NewTracerProvider creates an OpenTelemetry TracerProvider.
@@ -39,14 +42,23 @@ func NewTracerProvider(cfg *conf.Telemetry, serviceName string) (*sdktrace.Trace
 	}
 
 	if cfg != nil && cfg.OtlpEndpoint != "" {
-		exporter, err := otlptracegrpc.New(ctx,
-			otlptracegrpc.WithEndpoint(cfg.OtlpEndpoint),
-			otlptracegrpc.WithInsecure(),
+		slog.Info("connecting to OTLP collector", "endpoint", cfg.OtlpEndpoint)
+
+		// Use grpc.Dial with explicit insecure credentials — the deprecated
+		// otlptracegrpc.WithInsecure() may be a no-op in newer OTel versions.
+		conn, err := grpc.NewClient(cfg.OtlpEndpoint,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
+		if err != nil {
+			return nil, fmt.Errorf("dial otlp collector: %w", err)
+		}
+
+		exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
 		if err != nil {
 			return nil, fmt.Errorf("create otlp exporter: %w", err)
 		}
 		opts = append(opts, sdktrace.WithBatcher(exporter))
+		slog.Info("OTLP exporter created, traces will be exported")
 	}
 	// No exporter in dev mode: spans still created (trace_id/span_id in logs),
 	// but not dumped anywhere.
@@ -54,5 +66,11 @@ func NewTracerProvider(cfg *conf.Telemetry, serviceName string) (*sdktrace.Trace
 	tp := sdktrace.NewTracerProvider(opts...)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	// Route OTel-internal errors (e.g. export failures) to slog.Warn so they
+	// do not appear as misleading INFO messages.
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		slog.Warn(err.Error())
+	}))
 	return tp, nil
 }
