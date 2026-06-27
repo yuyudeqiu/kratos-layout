@@ -62,7 +62,8 @@ design rather than add the import.
 - Parse AIP list requests via `filtering` / `ordering` / `pagination`;
   apply `fieldmask.Update` for partial updates.
 - Validate request inputs at the service boundary before delegating to the
-  usecase.
+  usecase. We use `protoc-gen-validate` (PGV) rules inside protobufs, and the
+  HTTP/gRPC server validation middleware automatically validates incoming requests.
 - Return `biz` errors. No business rules, no storage access, no PO.
 
 **biz (DO only)**
@@ -80,12 +81,14 @@ design rather than add the import.
 - _Repo shape_: implement `biz.<Resource>Repo`. The constructor returns
   the interface, never the concrete type:
   `func New<Resource>Repo(d *Data) biz.<Resource>Repo`.
-- _PO and conversion_: define a PO when the storage shape diverges from
-  the DO. PO types stay inside `data`. Use free functions
-  `new<Resource>` (DO → PO, write) and `toBiz` (PO → DO, read).
-  Driver-specific builder types never leave `data`.
+- _GORM and PO_: define GORM models (PO) named `<Resource>Model` inside `data` (e.g. `TodoModel`) defining `TableName()`. Use free functions `new<Resource>` (DO → PO, write) and `toBiz` (PO → DO, read) to convert at boundaries. Run auto-migrations inside `NewData`.
+- _Caching (Decorator Pattern)_: use `cached<Resource>Repo` to separate caching concerns from DB queries. 
+  - Keep the `biz` layer pure (free of Redis/cache dependencies).
+  - Leverage Go's **anonymous interface embedding** in the decorator struct to automatically forward un-cached methods (e.g., writes) to the underlying DB repo.
+  - Apply cache penetration (caching sentinel "null" values), list cache versioning, and singleflight (for hotkeys) to guarantee performance and consistency.
+  - Register the decorator in `data.ProviderSet` to satisfy `biz.<Resource>Repo`.
 - _Shared clients_: `*Data` (declared in `internal/data/data.go`) holds
-  long-lived storage clients. Repos receive `*Data` and never construct
+  long-lived storage clients (GORM DB, Redis Client). Repos receive `*Data` and never construct
   their own clients.
 - _Querying_: translate `ListOptions.Filter` and `ListOptions.OrderBy`
   into the storage driver's query language inside the repo.
@@ -94,8 +97,9 @@ design rather than add the import.
 
 **server**
 
-- Construct HTTP/gRPC servers, apply middleware, register services. No
-  translation, no business logic.
+- Construct HTTP/gRPC servers, apply middleware (recovery, tracing, validate, metrics), register services. No translation, no business logic.
+- Expose health check probes: `/healthz` checks database and Redis connectivity returning 503 on degradation; `/readyz` is a lightweight probe returning 200 OK.
+- Run early pprof profiling server for troubleshooting startup bottlenecks.
 
 ### Add-a-resource checklist
 
@@ -117,6 +121,12 @@ design rather than add the import.
 Tests live beside the code they cover (`*_test.go`). Test layers in
 isolation: service tests fake the usecase, biz tests fake the repo, data
 tests exercise repo implementations at the storage boundary.
+
+## Observability & Diagnostics
+
+- **Tracing**: Instrument all database operations (GORM) via `gorm.io/plugin/opentelemetry` and cache operations (Redis) via `redisotel.InstrumentTracing(rdb)`. Trace context (`context.Context`) must propagate through all layers.
+- **Metrics**: Gather core server metrics via Prometheus metrics middleware and expose them at `/metrics` endpoint on the HTTP server.
+- **Logging**: Use structured logs via Go standard `log/slog` in JSON or Text format configured via `configs/config.yaml`.
 
 ## Generation & generated files
 
