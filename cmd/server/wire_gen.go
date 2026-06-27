@@ -29,12 +29,13 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger, 
 	if err != nil {
 		return nil, nil, err
 	}
-	todoRepo := data.NewTodoRepo(dataData)
+	todoRepo := data.NewCachedTodoRepo(dataData)
 	todoUsecase := biz.NewTodoUsecase(todoRepo)
 	todoService := service.NewTodoService(todoUsecase)
 	grpcServer := server.NewGRPCServer(confServer, todoService)
 	db := data.ProvideSQLDB(dataData)
-	httpServer := server.NewHTTPServer(confServer, todoService, handler, db)
+	universalClient := data.ProvideRedisClient(dataData)
+	httpServer := server.NewHTTPServer(confServer, todoService, handler, db, universalClient)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup()

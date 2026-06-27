@@ -17,6 +17,7 @@ import (
 	"github.com/go-kratos/kratos/v3/log"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/middleware/validate"
+	"github.com/redis/go-redis/v9"
 	kratoshttp "github.com/go-kratos/kratos/v3/transport/http"
 
 	"go.einride.tech/aip/fieldbehavior"
@@ -31,10 +32,11 @@ type HealthStatus struct {
 	Status    string `json:"status"`
 	Timestamp string `json:"timestamp"`
 	Database  string `json:"database,omitempty"`
+	Redis     string `json:"redis,omitempty"`
 }
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler http.Handler, sqlDB *sql.DB) *kratoshttp.Server {
+func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler http.Handler, sqlDB *sql.DB, rdb redis.UniversalClient) *kratoshttp.Server {
 	var opts = []kratoshttp.ServerOption{
 		kratoshttp.Middleware(
 			tracing.Server(),
@@ -67,8 +69,8 @@ func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler htt
 		srv.Handle("/metrics", metricsHandler)
 	}
 
-	// Health check — verifies DB connectivity.
-	srv.HandleFunc("/healthz", healthHandler(sqlDB))
+	// Health check — verifies DB and Redis connectivity.
+	srv.HandleFunc("/healthz", healthHandler(sqlDB, rdb))
 
 	// Readiness check — lighter, just returns ok.
 	srv.HandleFunc("/readyz", readyHandler())
@@ -76,8 +78,8 @@ func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler htt
 	return srv
 }
 
-// healthHandler returns a handler that checks database connectivity.
-func healthHandler(sqlDB *sql.DB) http.HandlerFunc {
+// healthHandler returns a handler that checks database and Redis connectivity.
+func healthHandler(sqlDB *sql.DB, rdb redis.UniversalClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -85,26 +87,40 @@ func healthHandler(sqlDB *sql.DB) http.HandlerFunc {
 			Status:    "ok",
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			Database:  "ok",
+			Redis:     "ok",
 		}
 
+		// Database check
 		if sqlDB == nil {
 			status.Status = "degraded"
 			status.Database = "unavailable"
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(status)
-			return
+		} else {
+			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+			if err := sqlDB.PingContext(ctx); err != nil {
+				log.WarnContext(ctx, "health check: database ping failed", "error", err)
+				status.Status = "degraded"
+				status.Database = fmt.Sprintf("error: %v", err)
+			}
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-
-		if err := sqlDB.PingContext(ctx); err != nil {
-			log.WarnContext(ctx, "health check: database ping failed", "error", err)
+		// Redis check
+		if rdb == nil {
 			status.Status = "degraded"
-			status.Database = fmt.Sprintf("error: %v", err)
-			w.WriteHeader(http.StatusServiceUnavailable)
+			status.Redis = "unavailable"
+		} else {
+			ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+			defer cancel()
+			if err := rdb.Ping(ctx).Err(); err != nil {
+				log.WarnContext(ctx, "health check: redis ping failed", "error", err)
+				status.Status = "degraded"
+				status.Redis = fmt.Sprintf("error: %v", err)
+			}
 		}
 
+		if status.Status != "ok" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
 		json.NewEncoder(w).Encode(status)
 	}
 }

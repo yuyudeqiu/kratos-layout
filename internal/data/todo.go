@@ -29,9 +29,17 @@ type todoRepo struct {
 	db *gorm.DB
 }
 
-// NewTodoRepo creates a new TodoRepo instance.
+// NewTodoRepo creates a new TodoRepo instance (uncached, for tests).
 func NewTodoRepo(data *Data) biz.TodoRepo {
 	return &todoRepo{db: data.DB}
+}
+
+// NewCachedTodoRepo creates a new TodoRepo instance with Redis cache-aside.
+func NewCachedTodoRepo(data *Data) biz.TodoRepo {
+	return &cachedTodoRepo{
+		TodoRepo: &todoRepo{db: data.DB},
+		redis:    data.Redis,
+	}
 }
 
 func (r *todoRepo) FindByID(ctx context.Context, id int64) (*biz.Todo, error) {

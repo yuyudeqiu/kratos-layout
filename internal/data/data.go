@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-kratos/kratos/v3/log"
 	"github.com/google/wire"
+	"github.com/redis/go-redis/extra/redisotel/v9"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gormlog "gorm.io/gorm/logger"
@@ -17,7 +19,7 @@ import (
 )
 
 // ProviderSet is data providers.
-var ProviderSet = wire.NewSet(NewData, NewTodoRepo, ProvideSQLDB)
+var ProviderSet = wire.NewSet(NewData, NewCachedTodoRepo, ProvideSQLDB, ProvideRedisClient)
 
 // ProvideSQLDB extracts the underlying *sql.DB from GORM for health checks etc.
 func ProvideSQLDB(d *Data) *sql.DB {
@@ -28,13 +30,20 @@ func ProvideSQLDB(d *Data) *sql.DB {
 	return sqlDB
 }
 
-// Data holds shared data resources (e.g. DB, Redis, MQ clients).
-type Data struct {
-	DB *gorm.DB
+// ProvideRedisClient extracts the Redis client for health checks etc.
+func ProvideRedisClient(d *Data) redis.UniversalClient {
+	return d.Redis
 }
 
-// NewData creates a Data instance and connects to the database.
+// Data holds shared data resources (e.g. DB, Redis, MQ clients).
+type Data struct {
+	DB    *gorm.DB
+	Redis redis.UniversalClient
+}
+
+// NewData creates a Data instance and connects to the database and Redis.
 func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
+	// --- Database ---
 	gormLogger := gormlog.NewSlogLogger(
 		logger,
 		gormlog.Config{
@@ -58,9 +67,33 @@ func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
 	if err := db.AutoMigrate(&TodoModel{}); err != nil {
 		return nil, nil, err
 	}
-	d := &Data{DB: db}
+
+	// --- Redis ---
+	rdb := redis.NewClient(&redis.Options{
+		Network:      c.Redis.Network,
+		Addr:         c.Redis.Addr,
+		Password:     c.Redis.Password,
+		DB:           int(c.Redis.Db),
+		DialTimeout:  c.Redis.DialTimeout.AsDuration(),
+		ReadTimeout:  c.Redis.ReadTimeout.AsDuration(),
+		WriteTimeout: c.Redis.WriteTimeout.AsDuration(),
+		PoolSize:     int(c.Redis.PoolSize),
+	})
+
+	// Enable OpenTelemetry tracing for Redis commands.
+	// Each Redis operation creates a child span (e.g. "SET", "GET") under the
+	// request span, with attributes like db.system=redis, db.statement, etc.
+	if err := redisotel.InstrumentTracing(rdb); err != nil {
+		return nil, nil, err
+	}
+
+	d := &Data{DB: db, Redis: rdb}
+
 	cleanup := func() {
 		log.Info("closing the data resources")
+		if err := rdb.Close(); err != nil {
+			log.Error("close redis failed: ", err)
+		}
 		sqlDB, err := db.DB()
 		if err != nil {
 			log.Error("get sql.DB failed: ", err)
