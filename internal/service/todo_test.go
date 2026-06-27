@@ -167,6 +167,46 @@ func TestTodoServiceValidation(t *testing.T) {
 	}
 }
 
+func TestTodoRequestValidation(t *testing.T) {
+	// 1. CreateTodoRequest validation: Todo is required, Title must be non-empty (min_len: 1)
+	req1 := &v1.CreateTodoRequest{}
+	if err := req1.Validate(); err == nil {
+		t.Fatal("expected validation error for empty CreateTodoRequest, got nil")
+	}
+
+	req2 := &v1.CreateTodoRequest{
+		Todo: &v1.Todo{Title: ""},
+	}
+	if err := req2.Validate(); err == nil {
+		t.Fatal("expected validation error for empty Title in CreateTodoRequest, got nil")
+	}
+
+	// 2. GetTodoRequest validation: Id must be gt 0
+	req3 := &v1.GetTodoRequest{Id: 0}
+	if err := req3.Validate(); err == nil {
+		t.Fatal("expected validation error for GetTodoRequest with Id=0, got nil")
+	}
+
+	req4 := &v1.GetTodoRequest{Id: -5}
+	if err := req4.Validate(); err == nil {
+		t.Fatal("expected validation error for GetTodoRequest with Id=-5, got nil")
+	}
+
+	// 3. UpdateTodoRequest validation: Todo and UpdateMask are required
+	req5 := &v1.UpdateTodoRequest{
+		Todo: &v1.Todo{Id: 1, Title: "valid"},
+	}
+	if err := req5.Validate(); err == nil {
+		t.Fatal("expected validation error for UpdateTodoRequest with missing UpdateMask, got nil")
+	}
+
+	// 4. DeleteTodoRequest validation: Id must be gt 0
+	req6 := &v1.DeleteTodoRequest{Id: 0}
+	if err := req6.Validate(); err == nil {
+		t.Fatal("expected validation error for DeleteTodoRequest with Id=0, got nil")
+	}
+}
+
 func TestTodoServiceWatchTodos(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestTodoService()

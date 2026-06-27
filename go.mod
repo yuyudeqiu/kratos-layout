@@ -3,6 +3,7 @@ module github.com/go-kratos/kratos-layout
 go 1.25.7
 
 require (
+	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/wire v0.6.0
 	go.einride.tech/aip v0.86.3

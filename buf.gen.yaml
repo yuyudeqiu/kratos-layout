@@ -17,3 +17,8 @@ plugins:
     opt:
       - fq_schema_naming=true
       - default_response=false
+  - local: ["go", "run", "github.com/envoyproxy/protoc-gen-validate@v1.0.4"]
+    out: api
+    opt:
+      - paths=source_relative
+      - lang=go

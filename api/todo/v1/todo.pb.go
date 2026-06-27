@@ -7,6 +7,7 @@
 package v1
 
 import (
+	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -680,11 +681,11 @@ var File_todo_v1_todo_proto protoreflect.FileDescriptor
 
 const file_todo_v1_todo_proto_rawDesc = "" +
 	"\n" +
-	"\x12todo/v1/todo.proto\x12\atodo.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xde\x01\n" +
+	"\x12todo/v1/todo.proto\x12\atodo.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17validate/validate.proto\"\xf3\x01\n" +
 	"\x04Todo\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
-	"\acontent\x18\x03 \x01(\tR\acontent\x12\x1c\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1f\n" +
+	"\x05title\x18\x02 \x01(\tB\t\xfaB\x06r\x04\x10\x01\x18dR\x05title\x12\"\n" +
+	"\acontent\x18\x03 \x01(\tB\b\xfaB\x05r\x03\x18\xe8\aR\acontent\x12\x1c\n" +
 	"\tcompleted\x18\x04 \x01(\bR\tcompleted\x12;\n" +
 	"\vcreate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12;\n" +
@@ -692,11 +693,12 @@ const file_todo_v1_todo_proto_rawDesc = "" +
 	"updateTime\"V\n" +
 	"\aTodoSet\x12#\n" +
 	"\x05todos\x18\x01 \x03(\v2\r.todo.v1.TodoR\x05todos\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\";\n" +
-	"\x11CreateTodoRequest\x12&\n" +
-	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\x03\xe0A\x02R\x04todo\"%\n" +
-	"\x0eGetTodoRequest\x12\x13\n" +
-	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id\"\xab\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"C\n" +
+	"\x11CreateTodoRequest\x12.\n" +
+	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\v\xe0A\x02\xfaB\x05\x8a\x01\x02\x10\x01R\x04todo\",\n" +
+	"\x0eGetTodoRequest\x12\x1a\n" +
+	"\x02id\x18\x01 \x01(\x03B\n" +
+	"\xe0A\x02\xfaB\x04\"\x02 \x00R\x02id\"\xab\x01\n" +
 	"\x10ListTodosRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12!\n" +
@@ -704,13 +706,14 @@ const file_todo_v1_todo_proto_rawDesc = "" +
 	"\x06search\x18\x04 \x01(\tR\x06search\x12\x19\n" +
 	"\border_by\x18\x05 \x01(\tR\aorderByB\f\n" +
 	"\n" +
-	"_completed\"}\n" +
-	"\x11UpdateTodoRequest\x12&\n" +
-	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\x03\xe0A\x02R\x04todo\x12@\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
-	"updateMask\"(\n" +
-	"\x11DeleteTodoRequest\x12\x13\n" +
-	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id\"\xac\x01\n" +
+	"_completed\"\x8d\x01\n" +
+	"\x11UpdateTodoRequest\x12.\n" +
+	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\v\xe0A\x02\xfaB\x05\x8a\x01\x02\x10\x01R\x04todo\x12H\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\v\xe0A\x02\xfaB\x05\x8a\x01\x02\x10\x01R\n" +
+	"updateMask\"/\n" +
+	"\x11DeleteTodoRequest\x12\x1a\n" +
+	"\x02id\x18\x01 \x01(\x03B\n" +
+	"\xe0A\x02\xfaB\x04\"\x02 \x00R\x02id\"\xac\x01\n" +
 	"\x11WatchTodosRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12!\n" +

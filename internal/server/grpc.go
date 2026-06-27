@@ -6,7 +6,11 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/service"
 
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
+	"github.com/go-kratos/kratos/v3/middleware/validate"
 	"github.com/go-kratos/kratos/v3/transport/grpc"
+
+	"go.einride.tech/aip/fieldbehavior"
+	"google.golang.org/protobuf/proto"
 )
 
 // NewGRPCServer new a gRPC server.
@@ -14,6 +18,14 @@ func NewGRPCServer(c *conf.Server, todo *service.TodoService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),
+			validate.Validator(func(req any) error {
+				if msg, ok := req.(proto.Message); ok {
+					if err := fieldbehavior.ValidateRequiredFields(msg); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
 		),
 	}
 	if c.Grpc.Network != "" {
