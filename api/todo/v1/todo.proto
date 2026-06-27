@@ -27,20 +27,20 @@ service TodoService {
     };
   }
 
-  // GetTodo returns a single todo item by its id.
-  // Returns NOT_FOUND if no todo exists with the supplied id.
-  rpc GetTodo (GetTodoRequest) returns (Todo) {
-    option (google.api.http) = {
-      get: "/v1/todos/{id}"
-    };
-  }
-
   // ListTodos returns a page of todo items, optionally filtered and ordered.
   // Use the next_page_token from TodoSet to retrieve subsequent pages.
   // Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
   rpc ListTodos (ListTodosRequest) returns (TodoSet) {
     option (google.api.http) = {
       get: "/v1/todos/list"
+    };
+  }
+
+  // GetTodo returns a single todo item by its id.
+  // Returns NOT_FOUND if no todo exists with the supplied id.
+  rpc GetTodo (GetTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      get: "/v1/todos/{id}"
     };
   }
 

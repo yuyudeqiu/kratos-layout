@@ -61,8 +61,8 @@ type TodoServiceHTTPServer interface {
 func RegisterTodoServiceHTTPServer(s *http.Server, srv TodoServiceHTTPServer) {
 	r := s.Route("/")
 	r.Handle("POST", "/v1/todos/create", _TodoService_CreateTodo0_HTTP_Handler(srv))
-	r.Handle("GET", "/v1/todos/{id}", _TodoService_GetTodo0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/todos/list", _TodoService_ListTodos0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/todos/{id}", _TodoService_GetTodo0_HTTP_Handler(srv))
 	r.Handle("PUT", "/v1/todos/update", _TodoService_UpdateTodo0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/v1/todos/{id}", _TodoService_DeleteTodo0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/todos/watch", _TodoService_WatchTodos0_HTTP_Handler(srv))
@@ -114,6 +114,25 @@ func _TodoService_CreateTodo0_HTTP_Handler(srv TodoServiceHTTPServer) func(ctx h
 	}
 }
 
+func _TodoService_ListTodos0_HTTP_Handler(srv TodoServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListTodosRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationTodoServiceListTodos)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListTodos(ctx, req.(*ListTodosRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*TodoSet)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _TodoService_GetTodo0_HTTP_Handler(srv TodoServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in GetTodoRequest
@@ -132,25 +151,6 @@ func _TodoService_GetTodo0_HTTP_Handler(srv TodoServiceHTTPServer) func(ctx http
 			return err
 		}
 		reply := out.(*Todo)
-		return ctx.Result(200, reply)
-	}
-}
-
-func _TodoService_ListTodos0_HTTP_Handler(srv TodoServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in ListTodosRequest
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationTodoServiceListTodos)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.ListTodos(ctx, req.(*ListTodosRequest))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*TodoSet)
 		return ctx.Result(200, reply)
 	}
 }

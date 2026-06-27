@@ -21,8 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	TodoService_CreateTodo_FullMethodName = "/todo.v1.TodoService/CreateTodo"
-	TodoService_GetTodo_FullMethodName    = "/todo.v1.TodoService/GetTodo"
 	TodoService_ListTodos_FullMethodName  = "/todo.v1.TodoService/ListTodos"
+	TodoService_GetTodo_FullMethodName    = "/todo.v1.TodoService/GetTodo"
 	TodoService_UpdateTodo_FullMethodName = "/todo.v1.TodoService/UpdateTodo"
 	TodoService_DeleteTodo_FullMethodName = "/todo.v1.TodoService/DeleteTodo"
 	TodoService_WatchTodos_FullMethodName = "/todo.v1.TodoService/WatchTodos"
@@ -41,13 +41,13 @@ type TodoServiceClient interface {
 	// with the server-assigned id, create_time, and update_time populated.
 	// Returns INVALID_ARGUMENT if the request payload fails validation.
 	CreateTodo(ctx context.Context, in *CreateTodoRequest, opts ...grpc.CallOption) (*Todo, error)
-	// GetTodo returns a single todo item by its id.
-	// Returns NOT_FOUND if no todo exists with the supplied id.
-	GetTodo(ctx context.Context, in *GetTodoRequest, opts ...grpc.CallOption) (*Todo, error)
 	// ListTodos returns a page of todo items, optionally filtered and ordered.
 	// Use the next_page_token from TodoSet to retrieve subsequent pages.
 	// Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 	ListTodos(ctx context.Context, in *ListTodosRequest, opts ...grpc.CallOption) (*TodoSet, error)
+	// GetTodo returns a single todo item by its id.
+	// Returns NOT_FOUND if no todo exists with the supplied id.
+	GetTodo(ctx context.Context, in *GetTodoRequest, opts ...grpc.CallOption) (*Todo, error)
 	// UpdateTodo applies a partial update to an existing todo item using a
 	// FieldMask. Only the fields listed in update_mask are overwritten; all
 	// other fields are left unchanged.
@@ -86,20 +86,20 @@ func (c *todoServiceClient) CreateTodo(ctx context.Context, in *CreateTodoReques
 	return out, nil
 }
 
-func (c *todoServiceClient) GetTodo(ctx context.Context, in *GetTodoRequest, opts ...grpc.CallOption) (*Todo, error) {
+func (c *todoServiceClient) ListTodos(ctx context.Context, in *ListTodosRequest, opts ...grpc.CallOption) (*TodoSet, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Todo)
-	err := c.cc.Invoke(ctx, TodoService_GetTodo_FullMethodName, in, out, cOpts...)
+	out := new(TodoSet)
+	err := c.cc.Invoke(ctx, TodoService_ListTodos_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *todoServiceClient) ListTodos(ctx context.Context, in *ListTodosRequest, opts ...grpc.CallOption) (*TodoSet, error) {
+func (c *todoServiceClient) GetTodo(ctx context.Context, in *GetTodoRequest, opts ...grpc.CallOption) (*Todo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(TodoSet)
-	err := c.cc.Invoke(ctx, TodoService_ListTodos_FullMethodName, in, out, cOpts...)
+	out := new(Todo)
+	err := c.cc.Invoke(ctx, TodoService_GetTodo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -170,13 +170,13 @@ type TodoServiceServer interface {
 	// with the server-assigned id, create_time, and update_time populated.
 	// Returns INVALID_ARGUMENT if the request payload fails validation.
 	CreateTodo(context.Context, *CreateTodoRequest) (*Todo, error)
-	// GetTodo returns a single todo item by its id.
-	// Returns NOT_FOUND if no todo exists with the supplied id.
-	GetTodo(context.Context, *GetTodoRequest) (*Todo, error)
 	// ListTodos returns a page of todo items, optionally filtered and ordered.
 	// Use the next_page_token from TodoSet to retrieve subsequent pages.
 	// Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 	ListTodos(context.Context, *ListTodosRequest) (*TodoSet, error)
+	// GetTodo returns a single todo item by its id.
+	// Returns NOT_FOUND if no todo exists with the supplied id.
+	GetTodo(context.Context, *GetTodoRequest) (*Todo, error)
 	// UpdateTodo applies a partial update to an existing todo item using a
 	// FieldMask. Only the fields listed in update_mask are overwritten; all
 	// other fields are left unchanged.
@@ -208,11 +208,11 @@ type UnimplementedTodoServiceServer struct{}
 func (UnimplementedTodoServiceServer) CreateTodo(context.Context, *CreateTodoRequest) (*Todo, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTodo not implemented")
 }
-func (UnimplementedTodoServiceServer) GetTodo(context.Context, *GetTodoRequest) (*Todo, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetTodo not implemented")
-}
 func (UnimplementedTodoServiceServer) ListTodos(context.Context, *ListTodosRequest) (*TodoSet, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTodos not implemented")
+}
+func (UnimplementedTodoServiceServer) GetTodo(context.Context, *GetTodoRequest) (*Todo, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTodo not implemented")
 }
 func (UnimplementedTodoServiceServer) UpdateTodo(context.Context, *UpdateTodoRequest) (*Todo, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateTodo not implemented")
@@ -265,24 +265,6 @@ func _TodoService_CreateTodo_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TodoService_GetTodo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTodoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TodoServiceServer).GetTodo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TodoService_GetTodo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TodoServiceServer).GetTodo(ctx, req.(*GetTodoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _TodoService_ListTodos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListTodosRequest)
 	if err := dec(in); err != nil {
@@ -297,6 +279,24 @@ func _TodoService_ListTodos_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TodoServiceServer).ListTodos(ctx, req.(*ListTodosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TodoService_GetTodo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTodoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TodoServiceServer).GetTodo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TodoService_GetTodo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TodoServiceServer).GetTodo(ctx, req.(*GetTodoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -367,12 +367,12 @@ var TodoService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _TodoService_CreateTodo_Handler,
 		},
 		{
-			MethodName: "GetTodo",
-			Handler:    _TodoService_GetTodo_Handler,
-		},
-		{
 			MethodName: "ListTodos",
 			Handler:    _TodoService_ListTodos_Handler,
+		},
+		{
+			MethodName: "GetTodo",
+			Handler:    _TodoService_GetTodo_Handler,
 		},
 		{
 			MethodName: "UpdateTodo",
