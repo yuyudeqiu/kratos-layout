@@ -143,6 +143,14 @@ func main() {
 		panic(err)
 	}
 
+	// Validate required configuration early to avoid runtime surprises.
+	if err := bc.Validate(); err != nil {
+		panic(err)
+	}
+	if err := bc.ValidateTelemetry(); err != nil {
+		bootstrapLogger.Warn("telemetry config", "warning", err)
+	}
+
 	// Phase 2: build configured logger from config
 	logger, logCleanup, err := buildLogger(bc.Log, id, Name, Version)
 	if err != nil {
