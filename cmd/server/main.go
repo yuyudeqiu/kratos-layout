@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/go-kratos/kratos-layout/internal/conf"
 
@@ -48,20 +51,80 @@ func newApp(logger *slog.Logger, gs *grpc.Server, hs *http.Server) *kratos.App {
 	)
 }
 
+// parseLevel parses a log level string, defaulting to info.
+func parseLevel(s string) slog.Level {
+	switch strings.ToLower(s) {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+// buildLogger creates a configured slog.Logger from Log config.
+// It returns the logger, an optional cleanup function for file handles, and any error.
+func buildLogger(cfg *conf.Log, id, name, version string) (*slog.Logger, func(), error) {
+	var opts []log.Option
+
+	// Format: default text
+	if cfg != nil && strings.EqualFold(cfg.Format, "json") {
+		opts = append(opts, log.WithFormat(log.FormatJSON))
+	}
+
+	// Level: default info
+	level := slog.LevelInfo
+	if cfg != nil && cfg.Level != "" {
+		level = parseLevel(cfg.Level)
+	}
+	opts = append(opts, log.WithLevel(level))
+
+	// AddSource
+	addSource := false
+	if cfg != nil {
+		addSource = cfg.AddSource
+	}
+	opts = append(opts, log.WithAddSource(addSource))
+
+	// Writer: stdout or file
+	var cleanup func()
+	writer := io.Writer(os.Stdout)
+	if cfg != nil && cfg.OutputPath != "" {
+		f, err := os.OpenFile(cfg.OutputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, nil, fmt.Errorf("open log file %s: %w", cfg.OutputPath, err)
+		}
+		writer = f
+		cleanup = func() { f.Close() }
+	}
+	opts = append(opts, log.WithWriter(writer))
+
+	// Tracing extractor (preserves existing OpenTelemetry integration)
+	opts = append(opts, log.WithExtractor(tracing.TraceAttrs))
+
+	handler := log.NewHandler(opts...)
+	logger := slog.New(handler).With(
+		slog.String("service.id", id),
+		slog.String("service.name", name),
+		slog.String("service.version", version),
+	)
+	return logger, cleanup, nil
+}
+
 func main() {
 	flag.Parse()
-	logger := log.NewLogger(
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			AddSource: true,
-			Level:     slog.LevelInfo,
-		}),
-		log.WithExtractor(tracing.TraceAttrs),
-	).With(
-		slog.String("service.id", id),
-		slog.String("service.name", Name),
-		slog.String("service.version", Version),
-	)
-	log.SetDefault(logger)
+
+	// Phase 1: bootstrap logger for config loading
+	bootstrapLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	log.SetDefault(bootstrapLogger)
+
 	c := config.New(
 		config.WithSource(
 			file.NewSource(flagconf),
@@ -77,6 +140,16 @@ func main() {
 	if err := c.Scan(&bc); err != nil {
 		panic(err)
 	}
+
+	// Phase 2: build configured logger from config
+	logger, logCleanup, err := buildLogger(bc.Log, id, Name, Version)
+	if err != nil {
+		panic(err)
+	}
+	if logCleanup != nil {
+		defer logCleanup()
+	}
+	log.SetDefault(logger)
 
 	app, cleanup, err := wireApp(bc.Server, bc.Data, logger)
 	if err != nil {
