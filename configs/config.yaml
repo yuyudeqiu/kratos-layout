@@ -27,3 +27,4 @@ log:
   # output_path: ""
 telemetry:
   otlp_endpoint: "localhost:4317"
+  sampling_rate: 1.0  # 0.0~1.0, 1.0=全量采样, 生产建议 0.1

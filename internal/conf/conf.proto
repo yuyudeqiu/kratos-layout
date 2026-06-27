@@ -14,6 +14,12 @@ message Bootstrap {
 
 message Telemetry {
   string otlp_endpoint = 1;
+  // Sampling rate for new root spans (0.0 ~ 1.0).
+  // When a request has an upstream trace header, the upstream decision is
+  // always respected (via ParentBased). This rate only applies when there
+  // is no upstream — e.g. cron jobs, message consumers, or direct gRPC calls.
+  // Defaults to 1.0 (AlwaysSample) when unset or zero.
+  double sampling_rate = 2;
 }
 
 message Log {

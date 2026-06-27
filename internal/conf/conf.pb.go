@@ -91,8 +91,14 @@ func (x *Bootstrap) GetTelemetry() *Telemetry {
 }
 
 type Telemetry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OtlpEndpoint  string                 `protobuf:"bytes,1,opt,name=otlp_endpoint,json=otlpEndpoint,proto3" json:"otlp_endpoint,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	OtlpEndpoint string                 `protobuf:"bytes,1,opt,name=otlp_endpoint,json=otlpEndpoint,proto3" json:"otlp_endpoint,omitempty"`
+	// Sampling rate for new root spans (0.0 ~ 1.0).
+	// When a request has an upstream trace header, the upstream decision is
+	// always respected (via ParentBased). This rate only applies when there
+	// is no upstream — e.g. cron jobs, message consumers, or direct gRPC calls.
+	// Defaults to 1.0 (AlwaysSample) when unset or zero.
+	SamplingRate  float64 `protobuf:"fixed64,2,opt,name=sampling_rate,json=samplingRate,proto3" json:"sampling_rate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -132,6 +138,13 @@ func (x *Telemetry) GetOtlpEndpoint() string {
 		return x.OtlpEndpoint
 	}
 	return ""
+}
+
+func (x *Telemetry) GetSamplingRate() float64 {
+	if x != nil {
+		return x.SamplingRate
+	}
+	return 0
 }
 
 type Log struct {
@@ -648,9 +661,10 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\x06server\x18\x01 \x01(\v2\x12.kratos.api.ServerR\x06server\x12$\n" +
 	"\x04data\x18\x02 \x01(\v2\x10.kratos.api.DataR\x04data\x12!\n" +
 	"\x03log\x18\x03 \x01(\v2\x0f.kratos.api.LogR\x03log\x123\n" +
-	"\ttelemetry\x18\x04 \x01(\v2\x15.kratos.api.TelemetryR\ttelemetry\"0\n" +
+	"\ttelemetry\x18\x04 \x01(\v2\x15.kratos.api.TelemetryR\ttelemetry\"U\n" +
 	"\tTelemetry\x12#\n" +
-	"\rotlp_endpoint\x18\x01 \x01(\tR\fotlpEndpoint\"s\n" +
+	"\rotlp_endpoint\x18\x01 \x01(\tR\fotlpEndpoint\x12#\n" +
+	"\rsampling_rate\x18\x02 \x01(\x01R\fsamplingRate\"s\n" +
 	"\x03Log\x12\x16\n" +
 	"\x06format\x18\x01 \x01(\tR\x06format\x12\x14\n" +
 	"\x05level\x18\x02 \x01(\tR\x05level\x12\x1d\n" +

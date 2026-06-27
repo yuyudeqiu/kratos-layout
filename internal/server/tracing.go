@@ -38,7 +38,7 @@ func NewTracerProvider(cfg *conf.Telemetry, serviceName string) (*sdktrace.Trace
 
 	opts := []sdktrace.TracerProviderOption{
 		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSampler(sampler(cfg)),
 	}
 
 	if cfg != nil && cfg.OtlpEndpoint != "" {
@@ -73,4 +73,17 @@ func NewTracerProvider(cfg *conf.Telemetry, serviceName string) (*sdktrace.Trace
 		slog.Warn(err.Error())
 	}))
 	return tp, nil
+}
+
+// sampler returns a trace sampler based on configuration.
+//
+// When sampling_rate is unset or >= 1.0, AlwaysSample() is used (current behavior).
+// Otherwise ParentBased(TraceIDRatioBased(rate)) is used, which:
+//   - Respects the upstream trace header decision when present
+//   - Falls back to the configured ratio when there is no upstream (e.g. cron jobs)
+func sampler(cfg *conf.Telemetry) sdktrace.Sampler {
+	if cfg != nil && cfg.SamplingRate > 0 && cfg.SamplingRate < 1.0 {
+		return sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.SamplingRate))
+	}
+	return sdktrace.AlwaysSample()
 }
