@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"time"
 
@@ -16,7 +17,16 @@ import (
 )
 
 // ProviderSet is data providers.
-var ProviderSet = wire.NewSet(NewData, NewTodoRepo)
+var ProviderSet = wire.NewSet(NewData, NewTodoRepo, ProvideSQLDB)
+
+// ProvideSQLDB extracts the underlying *sql.DB from GORM for health checks etc.
+func ProvideSQLDB(d *Data) *sql.DB {
+	sqlDB, err := d.DB.DB()
+	if err != nil {
+		panic(err) // never happens after successful NewData
+	}
+	return sqlDB
+}
 
 // Data holds shared data resources (e.g. DB, Redis, MQ clients).
 type Data struct {

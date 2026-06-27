@@ -33,7 +33,8 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger, 
 	todoUsecase := biz.NewTodoUsecase(todoRepo)
 	todoService := service.NewTodoService(todoUsecase)
 	grpcServer := server.NewGRPCServer(confServer, todoService)
-	httpServer := server.NewHTTPServer(confServer, todoService, handler)
+	db := data.ProvideSQLDB(dataData)
+	httpServer := server.NewHTTPServer(confServer, todoService, handler, db)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup()

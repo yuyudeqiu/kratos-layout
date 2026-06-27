@@ -153,6 +153,14 @@ func main() {
 	}
 	log.SetDefault(logger)
 
+	// Start pprof server if enabled (before heavy initialization so it's
+	// available early for debugging startup issues).
+	pprofStop, err := server.StartPprof(bc.Server.Pprof)
+	if err != nil {
+		panic(err)
+	}
+	defer pprofStop()
+
 	// Initialize OpenTelemetry TracerProvider.
 	tp, err := server.NewTracerProvider(bc.Telemetry, Name)
 	if err != nil {

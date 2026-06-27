@@ -1,13 +1,20 @@
 package server
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/pprof"
+	"runtime"
+	"time"
 
 	v1 "github.com/go-kratos/kratos-layout/api/todo/v1"
 	"github.com/go-kratos/kratos-layout/internal/conf"
 	"github.com/go-kratos/kratos-layout/internal/service"
 	"github.com/go-kratos/kratos/contrib/otel/v3/tracing"
+	"github.com/go-kratos/kratos/v3/log"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/middleware/validate"
 	kratoshttp "github.com/go-kratos/kratos/v3/transport/http"
@@ -19,8 +26,15 @@ import (
 // serviceName is the meter/tracer scope name shared by both servers.
 const serviceName = "kratos.layout"
 
+// HealthStatus represents the health check response.
+type HealthStatus struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+	Database  string `json:"database,omitempty"`
+}
+
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler http.Handler) *kratoshttp.Server {
+func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler http.Handler, sqlDB *sql.DB) *kratoshttp.Server {
 	var opts = []kratoshttp.ServerOption{
 		kratoshttp.Middleware(
 			tracing.Server(),
@@ -53,11 +67,103 @@ func NewHTTPServer(c *conf.Server, todo *service.TodoService, metricsHandler htt
 		srv.Handle("/metrics", metricsHandler)
 	}
 
-	// Health check endpoint.
-	srv.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
+	// Health check — verifies DB connectivity.
+	srv.HandleFunc("/healthz", healthHandler(sqlDB))
+
+	// Readiness check — lighter, just returns ok.
+	srv.HandleFunc("/readyz", readyHandler())
 
 	return srv
+}
+
+// healthHandler returns a handler that checks database connectivity.
+func healthHandler(sqlDB *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		status := HealthStatus{
+			Status:    "ok",
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Database:  "ok",
+		}
+
+		if sqlDB == nil {
+			status.Status = "degraded"
+			status.Database = "unavailable"
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(status)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := sqlDB.PingContext(ctx); err != nil {
+			log.WarnContext(ctx, "health check: database ping failed", "error", err)
+			status.Status = "degraded"
+			status.Database = fmt.Sprintf("error: %v", err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+
+		json.NewEncoder(w).Encode(status)
+	}
+}
+
+// readyHandler returns a handler that always returns ok.
+// It's a lightweight readiness probe separate from the liveness health check.
+func readyHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(HealthStatus{
+			Status:    "ok",
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+}
+
+// StartPprof starts a pprof HTTP server on the configured address.
+// Returns a stop function that shuts down the pprof server.
+func StartPprof(cfg *conf.Server_Pprof) (func(), error) {
+	if cfg == nil || !cfg.Enabled {
+		log.Info("pprof disabled")
+		return func() {}, nil
+	}
+
+	addr := cfg.Addr
+	if addr == "" {
+		addr = ":6060"
+	}
+
+	runtime.SetMutexProfileFraction(5)
+	runtime.SetBlockProfileRate(1)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	pprofSrv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	go func() {
+		log.Info("pprof listening", "addr", addr)
+		if err := pprofSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("pprof server error", "error", err)
+		}
+	}()
+
+	stop := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := pprofSrv.Shutdown(ctx); err != nil {
+			log.Error("pprof shutdown error", "error", err)
+		}
+	}
+
+	return stop, nil
 }

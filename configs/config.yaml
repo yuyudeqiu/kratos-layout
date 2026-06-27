@@ -5,6 +5,9 @@ server:
   grpc:
     addr: 0.0.0.0:9000
     timeout: 1s
+  pprof:
+    enabled: false
+    addr: ":6060"
 data:
   database:
     driver: mysql
