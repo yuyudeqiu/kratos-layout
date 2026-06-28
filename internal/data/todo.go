@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	v1 "github.com/go-kratos/kratos-layout/api/todo/v1"
 	"github.com/go-kratos/kratos-layout/internal/biz"
 
 	"go.einride.tech/aip/filtering"
@@ -170,19 +169,15 @@ func applyTodoOrderBy(db *gorm.DB, orderBy string) (*gorm.DB, error) {
 }
 
 func applyTodoFilter(db *gorm.DB, filter string) (*gorm.DB, error) {
-	declarationOptions := []filtering.DeclarationOption{filtering.DeclareStandardFunctions()}
-	declarationOptions = append(
-		declarationOptions,
-		filtering.DeclareProtoMessageIdents(&v1.Todo{}, filtering.WithFilterableFields(
-			"id",
-			"title",
-			"content",
-			"completed",
-			"create_time",
-			"update_time",
-		))...,
+	declarations, err := filtering.NewDeclarations(
+		filtering.DeclareStandardFunctions(),
+		filtering.DeclareIdent("id", filtering.TypeInt),
+		filtering.DeclareIdent("title", filtering.TypeString),
+		filtering.DeclareIdent("content", filtering.TypeString),
+		filtering.DeclareIdent("completed", filtering.TypeBool),
+		filtering.DeclareIdent("create_time", filtering.TypeTimestamp),
+		filtering.DeclareIdent("update_time", filtering.TypeTimestamp),
 	)
-	declarations, err := filtering.NewDeclarations(declarationOptions...)
 	if err != nil {
 		return nil, err
 	}
