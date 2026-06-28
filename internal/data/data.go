@@ -64,6 +64,35 @@ func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
 	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, nil, err
 	}
+
+	// Configure connection pool. Unset config values use code-level defaults.
+	{
+		sqlDB, err := db.DB()
+		if err != nil {
+			return nil, nil, err
+		}
+		maxOpen := 25
+		maxIdle := 10
+		connMaxLifetime := 5 * time.Minute
+		connMaxIdleTime := 1 * time.Minute
+		if v := int(c.Database.MaxOpenConns); v > 0 {
+			maxOpen = v
+		}
+		if v := int(c.Database.MaxIdleConns); v > 0 {
+			maxIdle = v
+		}
+		if d := c.Database.ConnMaxLifetime; d != nil {
+			connMaxLifetime = d.AsDuration()
+		}
+		if d := c.Database.ConnMaxIdleTime; d != nil {
+			connMaxIdleTime = d.AsDuration()
+		}
+		sqlDB.SetMaxOpenConns(maxOpen)
+		sqlDB.SetMaxIdleConns(maxIdle)
+		sqlDB.SetConnMaxLifetime(connMaxLifetime)
+		sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
+	}
+
 	if err := db.AutoMigrate(&TodoModel{}); err != nil {
 		return nil, nil, err
 	}

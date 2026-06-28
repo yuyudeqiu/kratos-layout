@@ -12,6 +12,10 @@ data:
   database:
     driver: mysql
     source: root:root@tcp(127.0.0.1:3306)/test?parseTime=True&loc=Local
+    max_open_conns: 25
+    max_idle_conns: 10
+    conn_max_lifetime: 300s
+    conn_max_idle_time: 60s
   redis:
     addr: 127.0.0.1:6379
     password: ""

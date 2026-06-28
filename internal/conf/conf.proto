@@ -53,6 +53,11 @@ message Data {
   message Database {
     string driver = 1;
     string source = 2;
+    // Connection pool settings. Zero / unset means use the code-level default.
+    int32 max_open_conns = 3;              // max open connections, default 25
+    int32 max_idle_conns = 4;              // max idle connections, default 10
+    google.protobuf.Duration conn_max_lifetime = 5;  // max connection lifetime, default 300s
+    google.protobuf.Duration conn_max_idle_time = 6; // max connection idle time, default 60s
   }
   message Redis {
     string network = 1;
