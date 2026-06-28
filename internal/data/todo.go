@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -48,10 +49,7 @@ func NewCachedTodoRepo(data *Data) biz.TodoRepo {
 func (r *todoRepo) FindByID(ctx context.Context, id int64) (*biz.Todo, error) {
 	var model TodoModel
 	if err := r.db.WithContext(ctx).First(&model, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, biz.ErrTodoNotFound
-		}
-		return nil, err
+		return nil, mapTodoStoreError(err)
 	}
 	return model.toBiz(), nil
 }
@@ -93,7 +91,7 @@ func (r *todoRepo) ListTodos(ctx context.Context, opts ...biz.ListOption) ([]*bi
 		Offset(options.Offset).
 		Limit(options.Limit).
 		Find(&models).Error; err != nil {
-		return nil, err
+		return nil, mapTodoStoreError(err)
 	}
 
 	todos := make([]*biz.Todo, 0, len(models))
@@ -106,7 +104,7 @@ func (r *todoRepo) ListTodos(ctx context.Context, opts ...biz.ListOption) ([]*bi
 func (r *todoRepo) CreateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, error) {
 	model := fromBizTodo(todo)
 	if err := r.db.WithContext(ctx).Create(&model).Error; err != nil {
-		return nil, err
+		return nil, mapTodoStoreError(err)
 	}
 	return model.toBiz(), nil
 }
@@ -114,10 +112,7 @@ func (r *todoRepo) CreateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, e
 func (r *todoRepo) UpdateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, error) {
 	var model TodoModel
 	if err := r.db.WithContext(ctx).First(&model, todo.ID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, biz.ErrTodoNotFound
-		}
-		return nil, err
+		return nil, mapTodoStoreError(err)
 	}
 	// Only update mutable fields, preserve CreateTime.
 	updates := map[string]any{
@@ -126,11 +121,11 @@ func (r *todoRepo) UpdateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, e
 		"completed": todo.Completed,
 	}
 	if err := r.db.WithContext(ctx).Model(&model).Updates(updates).Error; err != nil {
-		return nil, err
+		return nil, mapTodoStoreError(err)
 	}
 	// Re-fetch to get the updated record with UpdateTime.
 	if err := r.db.WithContext(ctx).First(&model, todo.ID).Error; err != nil {
-		return nil, err
+		return nil, mapTodoStoreError(err)
 	}
 	return model.toBiz(), nil
 }
@@ -138,12 +133,22 @@ func (r *todoRepo) UpdateTodo(ctx context.Context, todo *biz.Todo) (*biz.Todo, e
 func (r *todoRepo) DeleteTodo(ctx context.Context, id int64) error {
 	result := r.db.WithContext(ctx).Delete(&TodoModel{}, id)
 	if result.Error != nil {
-		return result.Error
+		return mapTodoStoreError(result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return biz.ErrTodoNotFound
 	}
 	return nil
+}
+
+func mapTodoStoreError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return biz.ErrTodoNotFound
+	}
+	return biz.ErrTodoInternal
 }
 
 func applyTodoOrderBy(db *gorm.DB, orderBy string) (*gorm.DB, error) {

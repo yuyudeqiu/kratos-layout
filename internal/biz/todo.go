@@ -15,6 +15,8 @@ var (
 	ErrTodoNotFound = errors.NotFound(v1.ErrorReason_TODO_NOT_FOUND.String(), "todo not found")
 	// ErrTodoInvalidArgument is returned when a todo request is invalid.
 	ErrTodoInvalidArgument = errors.BadRequest(v1.ErrorReason_TODO_INVALID_ARGUMENT.String(), "invalid todo argument")
+	// ErrTodoInternal is returned when todo persistence fails.
+	ErrTodoInternal = errors.InternalServer(v1.ErrorReason_TODO_INTERNAL.String(), "todo internal error")
 )
 
 // Todo is a Todo model.

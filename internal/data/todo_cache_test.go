@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"strconv"
 	"testing"
@@ -202,5 +203,79 @@ func TestCachedTodoRepo(t *testing.T) {
 	newListKey := repo.listCacheKey(ctx, biz.ListOptions{Limit: 20})
 	if newListKey == listKey {
 		t.Fatal("expected list cache version key to increment on update")
+	}
+}
+
+func TestTodoRepoMapsStoreErrors(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	if err := db.AutoMigrate(&TodoModel{}); err != nil {
+		t.Fatalf("failed to migrate schema: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql db: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("failed to close sql db: %v", err)
+	}
+
+	repo := &todoRepo{db: db}
+	ctx := context.Background()
+
+	todo := &biz.Todo{ID: 1, Title: "store error"}
+	cases := []struct {
+		name string
+		run  func() error
+	}{
+		{
+			name: "find",
+			run: func() error {
+				_, err := repo.FindByID(ctx, 1)
+				return err
+			},
+		},
+		{
+			name: "list",
+			run: func() error {
+				_, err := repo.ListTodos(ctx)
+				return err
+			},
+		},
+		{
+			name: "create",
+			run: func() error {
+				_, err := repo.CreateTodo(ctx, todo)
+				return err
+			},
+		},
+		{
+			name: "update",
+			run: func() error {
+				_, err := repo.UpdateTodo(ctx, todo)
+				return err
+			},
+		},
+		{
+			name: "delete",
+			run: func() error {
+				return repo.DeleteTodo(ctx, 1)
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.run(); err != biz.ErrTodoInternal {
+				t.Fatalf("expected ErrTodoInternal, got %v", err)
+			}
+		})
+	}
+
+	if err := mapTodoStoreError(sql.ErrNoRows); err != biz.ErrTodoInternal {
+		t.Fatalf("expected unknown store errors to map to ErrTodoInternal, got %v", err)
 	}
 }

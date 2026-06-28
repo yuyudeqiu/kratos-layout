@@ -27,6 +27,7 @@ const (
 	ErrorReason_TODO_UNSPECIFIED      ErrorReason = 0
 	ErrorReason_TODO_NOT_FOUND        ErrorReason = 1
 	ErrorReason_TODO_INVALID_ARGUMENT ErrorReason = 2
+	ErrorReason_TODO_INTERNAL         ErrorReason = 3
 )
 
 // Enum value maps for ErrorReason.
@@ -35,11 +36,13 @@ var (
 		0: "TODO_UNSPECIFIED",
 		1: "TODO_NOT_FOUND",
 		2: "TODO_INVALID_ARGUMENT",
+		3: "TODO_INTERNAL",
 	}
 	ErrorReason_value = map[string]int32{
 		"TODO_UNSPECIFIED":      0,
 		"TODO_NOT_FOUND":        1,
 		"TODO_INVALID_ARGUMENT": 2,
+		"TODO_INTERNAL":         3,
 	}
 )
 
@@ -74,11 +77,12 @@ var File_todo_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_todo_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x1atodo/v1/error_reason.proto\x12\atodo.v1*R\n" +
+	"\x1atodo/v1/error_reason.proto\x12\atodo.v1*e\n" +
 	"\vErrorReason\x12\x14\n" +
 	"\x10TODO_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eTODO_NOT_FOUND\x10\x01\x12\x19\n" +
-	"\x15TODO_INVALID_ARGUMENT\x10\x02BJ\n" +
+	"\x15TODO_INVALID_ARGUMENT\x10\x02\x12\x11\n" +
+	"\rTODO_INTERNAL\x10\x03BJ\n" +
 	"\atodo.v1P\x01Z1github.com/go-kratos/kratos-layout/api/todo/v1;v1\xa2\x02\tAPITodoV1b\x06proto3"
 
 var (

@@ -11,4 +11,5 @@ enum ErrorReason {
   TODO_UNSPECIFIED = 0;
   TODO_NOT_FOUND = 1;
   TODO_INVALID_ARGUMENT = 2;
+  TODO_INTERNAL = 3;
 }
