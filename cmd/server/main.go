@@ -25,7 +25,7 @@ import (
 // go build -ldflags "-X main.Version=x.y.z"
 var (
 	// Name is the name of the compiled software.
-	Name string = "kratos.layout"
+	Name string = "kratos-layout"
 	// Version is the version of the compiled software.
 	Version string = "dev"
 	// flagconf is the config flag.
@@ -44,16 +44,22 @@ func init() {
 func main() {
 	flag.Parse()
 
+	// Use a minimal logger before the configured logger is available. This keeps
+	// config loading, validation, and migration errors visible during bootstrap.
 	bootstrapLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 	log.SetDefault(bootstrapLogger)
 
+	// Load config once at process startup. The generated conf.Bootstrap object is
+	// then passed into Wire so each layer receives only the config section it owns.
 	bc, err := loadBootstrap(flagconf)
 	if err != nil {
 		panic(err)
 	}
 
+	// `migrate` is a one-shot subcommand of the same binary. It intentionally
+	// returns before constructing servers, repos, tracing, or other runtime pieces.
 	args := flag.Args()
 	if isMigrateCommand(args) {
 		if err := migration.Run(bc, flagMigrations, args[1:], bootstrapLogger); err != nil {
@@ -63,6 +69,8 @@ func main() {
 		return
 	}
 
+	// Full application startup validates required runtime config. Telemetry
+	// warnings do not block the service because tracing can be optional locally.
 	if err := bc.Validate(); err != nil {
 		panic(err)
 	}
@@ -70,6 +78,8 @@ func main() {
 		bootstrapLogger.Warn("telemetry config", "warning", err)
 	}
 
+	// Wire is the composition root: it creates infra, server, data, biz, and
+	// service objects in dependency order, and returns a cleanup chain for them.
 	app, cleanup, err := wireApp(bc, infra.AppInfo{
 		ID:      id,
 		Name:    Name,
@@ -80,11 +90,15 @@ func main() {
 	}
 	defer cleanup()
 
+	// app.Run blocks until the Kratos application stops or fails.
 	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }
 
+// newApp is the final Wire provider. The Runtime and Pprof parameters are kept
+// in the signature so Wire initializes observability/profiling and includes
+// their cleanup functions, even though kratos.App does not use them directly.
 func newApp(logger *slog.Logger, _ infra.Runtime, _ server.Pprof, gs *grpc.Server, hs *http.Server) *kratos.App {
 	return kratos.New(
 		kratos.ID(id),
@@ -99,10 +113,17 @@ func newApp(logger *slog.Logger, _ infra.Runtime, _ server.Pprof, gs *grpc.Serve
 	)
 }
 
+// isMigrateCommand detects the binary's migration mode:
+//
+//	server migrate up
+//	server migrate status
 func isMigrateCommand(args []string) bool {
 	return len(args) > 0 && strings.EqualFold(args[0], "migrate")
 }
 
+// loadBootstrap reads config files from the configured path and scans them into
+// the generated Bootstrap type. Validation is handled by main after subcommand
+// dispatch, because migrations only need the database section.
 func loadBootstrap(path string) (*conf.Bootstrap, error) {
 	c := config.New(
 		config.WithSource(
