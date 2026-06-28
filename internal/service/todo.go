@@ -10,14 +10,18 @@ import (
 	v1 "github.com/go-kratos/kratos-layout/api/todo/v1"
 	"github.com/go-kratos/kratos-layout/internal/biz"
 
-	"go.einride.tech/aip/fieldmask"
 	"github.com/go-kratos/kratos/v3/log"
+	"go.einride.tech/aip/fieldmask"
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
+	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
 	defaultPageSize = 20
+	maxPageSize     = 100
 )
 
 // TodoService is a todo service.
@@ -54,32 +58,34 @@ func (s *TodoService) GetTodo(ctx context.Context, req *v1.GetTodoRequest) (*v1.
 
 // ListTodos lists todo items.
 func (s *TodoService) ListTodos(ctx context.Context, req *v1.ListTodosRequest) (*v1.TodoSet, error) {
-	log.InfoContext(ctx, "ListTodos called", "page_size", req.PageSize, "offset", req.GetOffset())
-	if req.PageSize <= 0 {
-		req.PageSize = defaultPageSize
-	}
-
-	var completed *bool
-	if req.Completed != nil {
-		c := req.GetCompleted()
-		completed = &c
+	log.InfoContext(ctx, "ListTodos called", "page_size", req.PageSize, "page_token", req.GetPageToken())
+	pageToken, err := normalizeListTodosRequest(req)
+	if err != nil {
+		return nil, err
 	}
 
 	todos, err := s.uc.ListTodos(ctx,
-		biz.ListCompleted(completed),
-		biz.ListSearch(req.GetSearch()),
+		biz.ListFilter(req.GetFilter()),
 		biz.ListOrderBy(req.GetOrderBy()),
-		biz.ListLimit(int(req.PageSize)),
-		biz.ListOffset(int(req.GetOffset())),
+		biz.ListLimit(int(req.PageSize)+1),
+		biz.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	hasNextPage := len(todos) > int(req.GetPageSize())
+	if hasNextPage {
+		todos = todos[:req.GetPageSize()]
 	}
 	set := &v1.TodoSet{
 		Todos: make([]*v1.Todo, 0, len(todos)),
 	}
 	for _, todo := range todos {
 		set.Todos = append(set.Todos, convertTodoReply(todo))
+	}
+	if hasNextPage {
+		set.NextPageToken = pageToken.Next(req).String()
 	}
 	return set, nil
 }
@@ -116,6 +122,8 @@ func (s *TodoService) WatchTodos(req *v1.WatchTodosRequest, stream v1.TodoServic
 	log.InfoContext(stream.Context(), "WatchTodos called", "page_size", req.PageSize)
 	if req.PageSize <= 0 {
 		req.PageSize = defaultPageSize
+	} else if req.PageSize > maxPageSize {
+		req.PageSize = maxPageSize
 	}
 
 	var completed *bool
@@ -190,6 +198,60 @@ func (s *TodoService) SyncTodos(stream v1.TodoService_SyncTodosServer) error {
 			return err
 		}
 	}
+}
+
+func normalizeListTodosRequest(req *v1.ListTodosRequest) (pagination.PageToken, error) {
+	switch {
+	case req.GetPageSize() < 0:
+		return pagination.PageToken{}, biz.ErrTodoInvalidArgument
+	case req.GetPageSize() == 0:
+		req.PageSize = defaultPageSize
+	case req.GetPageSize() > maxPageSize:
+		req.PageSize = maxPageSize
+	}
+
+	if _, err := parseTodoOrderBy(req); err != nil {
+		return pagination.PageToken{}, biz.ErrTodoInvalidArgument
+	}
+	if _, err := parseTodoFilter(req); err != nil {
+		return pagination.PageToken{}, biz.ErrTodoInvalidArgument
+	}
+	pageToken, err := pagination.ParsePageToken(req)
+	if err != nil {
+		return pagination.PageToken{}, biz.ErrTodoInvalidArgument
+	}
+	return pageToken, nil
+}
+
+func parseTodoOrderBy(req *v1.ListTodosRequest) (ordering.OrderBy, error) {
+	orderBy, err := ordering.ParseOrderBy(req)
+	if err != nil {
+		return ordering.OrderBy{}, err
+	}
+	if err := orderBy.ValidateForPaths("id", "title", "completed", "create_time", "update_time"); err != nil {
+		return ordering.OrderBy{}, err
+	}
+	return orderBy, nil
+}
+
+func parseTodoFilter(req *v1.ListTodosRequest) (filtering.Filter, error) {
+	declarationOptions := []filtering.DeclarationOption{filtering.DeclareStandardFunctions()}
+	declarationOptions = append(
+		declarationOptions,
+		filtering.DeclareProtoMessageIdents(&v1.Todo{}, filtering.WithFilterableFields(
+			"id",
+			"title",
+			"content",
+			"completed",
+			"create_time",
+			"update_time",
+		))...,
+	)
+	declarations, err := filtering.NewDeclarations(declarationOptions...)
+	if err != nil {
+		return filtering.Filter{}, err
+	}
+	return filtering.ParseFilter(req, declarations)
 }
 
 func convertTodo(in *v1.Todo) *biz.Todo {

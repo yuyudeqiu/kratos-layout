@@ -628,15 +628,11 @@ func (m *ListTodosRequest) validate(all bool) error {
 
 	// no validation rules for PageSize
 
-	// no validation rules for Offset
+	// no validation rules for PageToken
 
-	// no validation rules for Search
+	// no validation rules for Filter
 
 	// no validation rules for OrderBy
-
-	if m.Completed != nil {
-		// no validation rules for Completed
-	}
 
 	if len(errors) > 0 {
 		return ListTodosRequestMultiError(errors)

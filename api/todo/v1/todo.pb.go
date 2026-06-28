@@ -272,14 +272,13 @@ type ListTodosRequest struct {
 	// Optional. Maximum number of todo items to return in a single page.
 	// The server may apply a default and a maximum when unset or out of range.
 	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	// Optional. The number of results to skip before starting to return.
-	Offset int32 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
-	// Optional. Filter by completed status.
-	Completed *bool `protobuf:"varint,3,opt,name=completed,proto3,oneof" json:"completed,omitempty"`
-	// Optional. Search query to match against title or content.
-	Search string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
+	// Optional. Token returned by the previous ListTodos response.
+	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Optional. AIP-160 filter expression, for example:
+	// `completed AND title : "docs"`.
+	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
 	// Optional. Field and direction to order by, e.g. "id desc".
-	OrderBy       string `protobuf:"bytes,5,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -321,23 +320,16 @@ func (x *ListTodosRequest) GetPageSize() int32 {
 	return 0
 }
 
-func (x *ListTodosRequest) GetOffset() int32 {
+func (x *ListTodosRequest) GetPageToken() string {
 	if x != nil {
-		return x.Offset
+		return x.PageToken
 	}
-	return 0
+	return ""
 }
 
-func (x *ListTodosRequest) GetCompleted() bool {
-	if x != nil && x.Completed != nil {
-		return *x.Completed
-	}
-	return false
-}
-
-func (x *ListTodosRequest) GetSearch() string {
+func (x *ListTodosRequest) GetFilter() string {
 	if x != nil {
-		return x.Search
+		return x.Filter
 	}
 	return ""
 }
@@ -698,15 +690,13 @@ const file_todo_v1_todo_proto_rawDesc = "" +
 	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\v\xe0A\x02\xfaB\x05\x8a\x01\x02\x10\x01R\x04todo\",\n" +
 	"\x0eGetTodoRequest\x12\x1a\n" +
 	"\x02id\x18\x01 \x01(\x03B\n" +
-	"\xe0A\x02\xfaB\x04\"\x02 \x00R\x02id\"\xab\x01\n" +
+	"\xe0A\x02\xfaB\x04\"\x02 \x00R\x02id\"\x81\x01\n" +
 	"\x10ListTodosRequest\x12\x1b\n" +
-	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12!\n" +
-	"\tcompleted\x18\x03 \x01(\bH\x00R\tcompleted\x88\x01\x01\x12\x16\n" +
-	"\x06search\x18\x04 \x01(\tR\x06search\x12\x19\n" +
-	"\border_by\x18\x05 \x01(\tR\aorderByB\f\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"_completed\"\x8d\x01\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
+	"\border_by\x18\x04 \x01(\tR\aorderBy\"\x8d\x01\n" +
 	"\x11UpdateTodoRequest\x12.\n" +
 	"\x04todo\x18\x01 \x01(\v2\r.todo.v1.TodoB\v\xe0A\x02\xfaB\x05\x8a\x01\x02\x10\x01R\x04todo\x12H\n" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\v\xe0A\x02\xfaB\x05\x8a\x01\x02\x10\x01R\n" +
@@ -812,7 +802,6 @@ func file_todo_v1_todo_proto_init() {
 	if File_todo_v1_todo_proto != nil {
 		return
 	}
-	file_todo_v1_todo_proto_msgTypes[4].OneofWrappers = []any{}
 	file_todo_v1_todo_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

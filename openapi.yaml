@@ -38,7 +38,8 @@ paths:
                 - TodoService
             description: |-
                 ListTodos returns a page of todo items, optionally filtered and ordered.
-                 Use the next_page_token from TodoSet to retrieve subsequent pages.
+                 Use the next_page_token from TodoSet as page_token to retrieve subsequent
+                 pages with the same filter and order_by values.
                  Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
             operationId: TodoService_ListTodos
             parameters:
@@ -50,20 +51,16 @@ paths:
                   schema:
                     type: integer
                     format: int32
-                - name: offset
+                - name: pageToken
                   in: query
-                  description: Optional. The number of results to skip before starting to return.
+                  description: Optional. Token returned by the previous ListTodos response.
                   schema:
-                    type: integer
-                    format: int32
-                - name: completed
+                    type: string
+                - name: filter
                   in: query
-                  description: Optional. Filter by completed status.
-                  schema:
-                    type: boolean
-                - name: search
-                  in: query
-                  description: Optional. Search query to match against title or content.
+                  description: |-
+                    Optional. AIP-160 filter expression, for example:
+                     `completed AND title : "docs"`.
                   schema:
                     type: string
                 - name: orderBy

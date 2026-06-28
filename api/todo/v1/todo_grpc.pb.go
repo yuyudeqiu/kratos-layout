@@ -42,7 +42,8 @@ type TodoServiceClient interface {
 	// Returns INVALID_ARGUMENT if the request payload fails validation.
 	CreateTodo(ctx context.Context, in *CreateTodoRequest, opts ...grpc.CallOption) (*Todo, error)
 	// ListTodos returns a page of todo items, optionally filtered and ordered.
-	// Use the next_page_token from TodoSet to retrieve subsequent pages.
+	// Use the next_page_token from TodoSet as page_token to retrieve subsequent
+	// pages with the same filter and order_by values.
 	// Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 	ListTodos(ctx context.Context, in *ListTodosRequest, opts ...grpc.CallOption) (*TodoSet, error)
 	// UpdateTodo applies a partial update to an existing todo item using a
@@ -171,7 +172,8 @@ type TodoServiceServer interface {
 	// Returns INVALID_ARGUMENT if the request payload fails validation.
 	CreateTodo(context.Context, *CreateTodoRequest) (*Todo, error)
 	// ListTodos returns a page of todo items, optionally filtered and ordered.
-	// Use the next_page_token from TodoSet to retrieve subsequent pages.
+	// Use the next_page_token from TodoSet as page_token to retrieve subsequent
+	// pages with the same filter and order_by values.
 	// Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 	ListTodos(context.Context, *ListTodosRequest) (*TodoSet, error)
 	// UpdateTodo applies a partial update to an existing todo item using a

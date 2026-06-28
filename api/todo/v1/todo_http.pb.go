@@ -38,7 +38,8 @@ type TodoServiceHTTPServer interface {
 	// Returns NOT_FOUND if no todo exists with the supplied id.
 	GetTodo(context.Context, *GetTodoRequest) (*Todo, error)
 	// ListTodos ListTodos returns a page of todo items, optionally filtered and ordered.
-	// Use the next_page_token from TodoSet to retrieve subsequent pages.
+	// Use the next_page_token from TodoSet as page_token to retrieve subsequent
+	// pages with the same filter and order_by values.
 	// Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 	ListTodos(context.Context, *ListTodosRequest) (*TodoSet, error)
 	// SyncTodos SyncTodos opens a bidirectional stream for two-way synchronization.
@@ -244,7 +245,8 @@ type TodoServiceHTTPClient interface {
 	// Returns NOT_FOUND if no todo exists with the supplied id.
 	GetTodo(ctx context.Context, req *GetTodoRequest, opts ...http.CallOption) (rsp *Todo, err error)
 	// ListTodos ListTodos returns a page of todo items, optionally filtered and ordered.
-	// Use the next_page_token from TodoSet to retrieve subsequent pages.
+	// Use the next_page_token from TodoSet as page_token to retrieve subsequent
+	// pages with the same filter and order_by values.
 	// Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 	ListTodos(ctx context.Context, req *ListTodosRequest, opts ...http.CallOption) (rsp *TodoSet, err error)
 	// SyncTodos SyncTodos opens a bidirectional stream for two-way synchronization.
@@ -387,7 +389,8 @@ func (c *TodoServiceHTTPClientImpl) GetTodo(ctx context.Context, in *GetTodoRequ
 }
 
 // ListTodos ListTodos returns a page of todo items, optionally filtered and ordered.
-// Use the next_page_token from TodoSet to retrieve subsequent pages.
+// Use the next_page_token from TodoSet as page_token to retrieve subsequent
+// pages with the same filter and order_by values.
 // Returns INVALID_ARGUMENT if filter, order_by, or page_token are malformed.
 func (c *TodoServiceHTTPClientImpl) ListTodos(ctx context.Context, in *ListTodosRequest, opts ...http.CallOption) (*TodoSet, error) {
 	var out TodoSet

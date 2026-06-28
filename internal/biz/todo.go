@@ -43,6 +43,7 @@ type ListOption func(*ListOptions)
 type ListOptions struct {
 	Completed *bool
 	Search    string
+	Filter    string
 	OrderBy   string
 	Offset    int
 	Limit     int
@@ -59,6 +60,13 @@ func ListCompleted(completed *bool) ListOption {
 func ListSearch(search string) ListOption {
 	return func(o *ListOptions) {
 		o.Search = search
+	}
+}
+
+// ListFilter sets a standard AIP filter expression.
+func ListFilter(filter string) ListOption {
+	return func(o *ListOptions) {
+		o.Filter = filter
 	}
 }
 

@@ -56,7 +56,16 @@ func (r *cachedTodoRepo) listCacheKey(ctx context.Context, opts biz.ListOptions)
 		comp = "nil"
 	}
 	version := r.getListVersion(ctx)
-	return fmt.Sprintf("todo:list:%s:%s:%s:%s:%d:%d", version, comp, opts.Search, opts.OrderBy, opts.Offset, opts.Limit)
+	return fmt.Sprintf(
+		"todo:list:%s:%s:%s:%s:%s:%d:%d",
+		version,
+		comp,
+		opts.Search,
+		opts.Filter,
+		opts.OrderBy,
+		opts.Offset,
+		opts.Limit,
+	)
 }
 
 // FindByID returns a todo by ID, checking cache first.

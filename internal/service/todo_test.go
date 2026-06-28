@@ -9,10 +9,10 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/biz"
 	"github.com/go-kratos/kratos-layout/internal/data"
 
+	"github.com/glebarez/sqlite"
 	kratoserrors "github.com/go-kratos/kratos/v3/errors"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -94,17 +94,20 @@ func TestTodoServiceListTodosPagination(t *testing.T) {
 		}
 	}
 
-	firstPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{PageSize: 2, Offset: 0})
+	firstPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{PageSize: 2})
 	if err != nil {
 		t.Fatalf("ListTodos(first page) error = %v", err)
 	}
 	if len(firstPage.GetTodos()) != 2 {
 		t.Fatalf("ListTodos(first page) len = %d, want 2", len(firstPage.GetTodos()))
 	}
+	if firstPage.GetNextPageToken() == "" {
+		t.Fatal("ListTodos(first page) next_page_token is empty, want token")
+	}
 
 	secondPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{
-		PageSize: 2,
-		Offset:   2,
+		PageSize:  2,
+		PageToken: firstPage.GetNextPageToken(),
 	})
 	if err != nil {
 		t.Fatalf("ListTodos(second page) error = %v", err)
@@ -131,12 +134,10 @@ func TestTodoServiceListTodosFilterAndOrderBy(t *testing.T) {
 		}
 	}
 
-	completedVal := true
 	reply, err := svc.ListTodos(ctx, &v1.ListTodosRequest{
-		PageSize:  10,
-		Completed: &completedVal,
-		Search:    "fix",
-		OrderBy:   "title desc",
+		PageSize: 10,
+		Filter:   `completed AND title : "fix"`,
+		OrderBy:  "title desc",
 	})
 	if err != nil {
 		t.Fatalf("ListTodos(filter/order) error = %v", err)
@@ -146,6 +147,50 @@ func TestTodoServiceListTodosFilterAndOrderBy(t *testing.T) {
 	}
 	if reply.GetTodos()[0].GetTitle() != "fix api" {
 		t.Fatalf("ListTodos(filter/order) first title = %q, want fix api", reply.GetTodos()[0].GetTitle())
+	}
+}
+
+func TestTodoServiceListTodosRejectsInvalidAIPInputs(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestTodoService()
+
+	for _, req := range []*v1.ListTodosRequest{
+		{PageSize: -1},
+		{PageSize: 10, PageToken: "invalid"},
+		{PageSize: 10, OrderBy: "missing desc"},
+		{PageSize: 10, Filter: `unknown = "field"`},
+	} {
+		if _, err := svc.ListTodos(ctx, req); !kratoserrors.IsBadRequest(err) {
+			t.Fatalf("ListTodos(%+v) error = %v, want bad request", req, err)
+		}
+	}
+}
+
+func TestTodoServiceListTodosPageTokenBoundToRequest(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestTodoService()
+
+	for _, title := range []string{"first", "second", "third"} {
+		if _, err := svc.CreateTodo(ctx, &v1.CreateTodoRequest{Todo: &v1.Todo{Title: title}}); err != nil {
+			t.Fatalf("CreateTodo(%q) error = %v", title, err)
+		}
+	}
+
+	firstPage, err := svc.ListTodos(ctx, &v1.ListTodosRequest{PageSize: 1, OrderBy: "id asc"})
+	if err != nil {
+		t.Fatalf("ListTodos(first page) error = %v", err)
+	}
+	if firstPage.GetNextPageToken() == "" {
+		t.Fatal("ListTodos(first page) next_page_token is empty, want token")
+	}
+
+	_, err = svc.ListTodos(ctx, &v1.ListTodosRequest{
+		PageSize:  1,
+		PageToken: firstPage.GetNextPageToken(),
+		OrderBy:   "title desc",
+	})
+	if !kratoserrors.IsBadRequest(err) {
+		t.Fatalf("ListTodos(changed order_by with token) error = %v, want bad request", err)
 	}
 }
 
