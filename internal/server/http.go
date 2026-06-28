@@ -17,8 +17,8 @@ import (
 	"github.com/go-kratos/kratos/v3/log"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/middleware/validate"
-	"github.com/redis/go-redis/v9"
 	kratoshttp "github.com/go-kratos/kratos/v3/transport/http"
+	"github.com/redis/go-redis/v9"
 
 	"go.einride.tech/aip/fieldbehavior"
 	"google.golang.org/protobuf/proto"
@@ -26,6 +26,9 @@ import (
 
 // serviceName is the meter/tracer scope name shared by both servers.
 const serviceName = "kratos.layout"
+
+// Pprof keeps the profiling server in the Wire dependency graph.
+type Pprof struct{}
 
 // HealthStatus represents the health check response.
 type HealthStatus struct {
@@ -135,6 +138,12 @@ func readyHandler() http.HandlerFunc {
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		})
 	}
+}
+
+// NewPprof starts the pprof server when enabled.
+func NewPprof(c *conf.Server) (Pprof, func(), error) {
+	stop, err := StartPprof(c.Pprof)
+	return Pprof{}, stop, err
 }
 
 // StartPprof starts a pprof HTTP server on the configured address.

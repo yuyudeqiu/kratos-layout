@@ -1,6 +1,8 @@
 GOHOSTOS:=$(shell go env GOHOSTOS)
 GOPATH:=$(shell go env GOPATH)
 VERSION=$(shell git describe --tags --always)
+CONF?=./configs
+MIGRATION_DIR?=./migrations
 
 .PHONY: init
 # init env
@@ -22,6 +24,21 @@ api:
 # build
 build:
 	mkdir -p bin/ && go build -ldflags "-X main.Version=$(VERSION)" -o ./bin/ ./...
+
+.PHONY: migrate-up
+# apply database migrations
+migrate-up:
+	go run ./cmd/server -conf $(CONF) -migrations $(MIGRATION_DIR) migrate up
+
+.PHONY: migrate-down
+# roll back the latest database migration
+migrate-down:
+	go run ./cmd/server -conf $(CONF) -migrations $(MIGRATION_DIR) migrate down
+
+.PHONY: migrate-status
+# show database migration status
+migrate-status:
+	go run ./cmd/server -conf $(CONF) -migrations $(MIGRATION_DIR) migrate status
 
 .PHONY: generate
 # generate

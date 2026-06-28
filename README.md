@@ -35,7 +35,8 @@ go test ./...
 - OpenAPI generation.
 - Wire-based dependency injection.
 - Layered `service`, `biz`, and `data` packages.
-- A lightweight in-memory repository for the sample resource.
+- GORM-backed MySQL repository and Redis cache integration.
+- SQL-first database migrations with goose.
 - Unit tests for the service layer.
 - Server-streaming and bidirectional-streaming examples.
 
@@ -101,6 +102,24 @@ Build:
 make build
 ```
 
+Apply database migrations:
+
+```bash
+go run ./cmd/server -conf ./configs -migrations ./migrations migrate up
+```
+
+Check migration status:
+
+```bash
+go run ./cmd/server -conf ./configs -migrations ./migrations migrate status
+```
+
+Roll back the latest migration:
+
+```bash
+go run ./cmd/server -conf ./configs -migrations ./migrations migrate down
+```
+
 Test:
 
 ```bash
@@ -110,6 +129,7 @@ go test ./...
 ## Run Locally
 
 ```bash
+make migrate-up
 go run ./cmd/server -conf ./configs
 ```
 

@@ -1,4 +1,4 @@
-package server
+package infra
 
 import (
 	"context"
@@ -18,22 +18,16 @@ import (
 )
 
 // NewTracerProvider creates an OpenTelemetry TracerProvider.
-//
-// When cfg.OtlpEndpoint is set, spans are exported via OTLP/gRPC (e.g. to Grafana Tempo).
-// When empty (local development), spans are still created so trace_id/span_id appear in
-// logs, but they are not exported anywhere — no noise on stdout.
-//
-// The caller must call Shutdown on the returned provider before the process exits.
-func NewTracerProvider(cfg *conf.Telemetry, serviceName string) (*sdktrace.TracerProvider, error) {
+func NewTracerProvider(cfg *conf.Telemetry, info AppInfo) (*sdktrace.TracerProvider, func(), error) {
 	ctx := context.Background()
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceNameKey.String(info.Name),
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create resource: %w", err)
+		return nil, nil, fmt.Errorf("create resource: %w", err)
 	}
 
 	opts := []sdktrace.TracerProviderOption{
@@ -44,43 +38,36 @@ func NewTracerProvider(cfg *conf.Telemetry, serviceName string) (*sdktrace.Trace
 	if cfg != nil && cfg.OtlpEndpoint != "" {
 		slog.Info("connecting to OTLP collector", "endpoint", cfg.OtlpEndpoint)
 
-		// Use grpc.Dial with explicit insecure credentials — the deprecated
-		// otlptracegrpc.WithInsecure() may be a no-op in newer OTel versions.
 		conn, err := grpc.NewClient(cfg.OtlpEndpoint,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("dial otlp collector: %w", err)
+			return nil, nil, fmt.Errorf("dial otlp collector: %w", err)
 		}
 
 		exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
 		if err != nil {
-			return nil, fmt.Errorf("create otlp exporter: %w", err)
+			return nil, nil, fmt.Errorf("create otlp exporter: %w", err)
 		}
 		opts = append(opts, sdktrace.WithBatcher(exporter))
 		slog.Info("OTLP exporter created, traces will be exported")
 	}
-	// No exporter in dev mode: spans still created (trace_id/span_id in logs),
-	// but not dumped anywhere.
 
 	tp := sdktrace.NewTracerProvider(opts...)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-
-	// Route OTel-internal errors (e.g. export failures) to slog.Warn so they
-	// do not appear as misleading INFO messages.
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
 		slog.Warn(err.Error())
 	}))
-	return tp, nil
+
+	cleanup := func() {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			slog.Error("shutdown tracer provider", "error", err)
+		}
+	}
+	return tp, cleanup, nil
 }
 
-// sampler returns a trace sampler based on configuration.
-//
-// When sampling_rate is unset or >= 1.0, AlwaysSample() is used (current behavior).
-// Otherwise ParentBased(TraceIDRatioBased(rate)) is used, which:
-//   - Respects the upstream trace header decision when present
-//   - Falls back to the configured ratio when there is no upstream (e.g. cron jobs)
 func sampler(cfg *conf.Telemetry) sdktrace.Sampler {
 	if cfg != nil && cfg.SamplingRate > 0 && cfg.SamplingRate < 1.0 {
 		return sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.SamplingRate))

@@ -10,11 +10,10 @@ import (
 	"github.com/go-kratos/kratos-layout/internal/biz"
 	"github.com/go-kratos/kratos-layout/internal/conf"
 	"github.com/go-kratos/kratos-layout/internal/data"
+	"github.com/go-kratos/kratos-layout/internal/infra"
 	"github.com/go-kratos/kratos-layout/internal/server"
 	"github.com/go-kratos/kratos-layout/internal/service"
 	"github.com/go-kratos/kratos/v3"
-	"log/slog"
-	"net/http"
 )
 
 import (
@@ -24,9 +23,40 @@ import (
 // Injectors from wire.go:
 
 // wireApp init kratos application.
-func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger, handler http.Handler) (*kratos.App, func(), error) {
-	dataData, cleanup, err := data.NewData(confData, logger)
+func wireApp(bootstrap *conf.Bootstrap, appInfo infra.AppInfo) (*kratos.App, func(), error) {
+	log := infra.ProvideLogConfig(bootstrap)
+	logger, cleanup, err := infra.NewLogger(log, appInfo)
 	if err != nil {
+		return nil, nil, err
+	}
+	telemetry := infra.ProvideTelemetryConfig(bootstrap)
+	tracerProvider, cleanup2, err := infra.NewTracerProvider(telemetry, appInfo)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	handler, cleanup3, err := infra.NewMeterProvider()
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	runtime := infra.NewRuntime(tracerProvider, handler)
+	confServer := infra.ProvideServerConfig(bootstrap)
+	pprof, cleanup4, err := server.NewPprof(confServer)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	confData := infra.ProvideDataConfig(bootstrap)
+	dataData, cleanup5, err := data.NewData(confData, logger)
+	if err != nil {
+		cleanup4()
+		cleanup3()
+		cleanup2()
+		cleanup()
 		return nil, nil, err
 	}
 	todoRepo := data.NewCachedTodoRepo(dataData)
@@ -36,8 +66,12 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger *slog.Logger, 
 	db := data.ProvideSQLDB(dataData)
 	universalClient := data.ProvideRedisClient(dataData)
 	httpServer := server.NewHTTPServer(confServer, todoService, handler, db, universalClient)
-	app := newApp(logger, grpcServer, httpServer)
+	app := newApp(logger, runtime, pprof, grpcServer, httpServer)
 	return app, func() {
+		cleanup5()
+		cleanup4()
+		cleanup3()
+		cleanup2()
 		cleanup()
 	}, nil
 }

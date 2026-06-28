@@ -93,10 +93,6 @@ func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
 		sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
 	}
 
-	if err := db.AutoMigrate(&TodoModel{}); err != nil {
-		return nil, nil, err
-	}
-
 	// --- Redis ---
 	rdb := redis.NewClient(&redis.Options{
 		Network:      c.Redis.Network,

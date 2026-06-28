@@ -81,7 +81,8 @@ design rather than add the import.
 - _Repo shape_: implement `biz.<Resource>Repo`. The constructor returns
   the interface, never the concrete type:
   `func New<Resource>Repo(d *Data) biz.<Resource>Repo`.
-- _GORM and PO_: define GORM models (PO) named `<Resource>Model` inside `data` (e.g. `TodoModel`) defining `TableName()`. Use free functions `new<Resource>` (DO → PO, write) and `toBiz` (PO → DO, read) to convert at boundaries. Run auto-migrations inside `NewData`.
+- _GORM and PO_: define GORM models (PO) named `<Resource>Model` inside `data` (e.g. `TodoModel`) defining `TableName()`. Use free functions `new<Resource>` (DO → PO, write) and `toBiz` (PO → DO, read) to convert at boundaries. Do not run schema migrations from application startup.
+- _Schema migrations_: manage database schema with SQL migrations under `migrations/`, executed by the main application binary's `migrate` subcommand / `make migrate-*`. Do not run schema migrations from application startup. Add a migration in the same change as any PO/query change that requires schema updates.
 - _Caching (Decorator Pattern)_: use `cached<Resource>Repo` to separate caching concerns from DB queries. 
   - Keep the `biz` layer pure (free of Redis/cache dependencies).
   - Leverage Go's **anonymous interface embedding** in the decorator struct to automatically forward un-cached methods (e.g., writes) to the underlying DB repo.
